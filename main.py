@@ -1,6 +1,8 @@
+import os
+
 import telebot
 
-bot = telebot.TeleBot('2130478122:AAHE1jvoTMKc3hGbPbzonFiyND86k_hc2Pg')
+bot = telebot.TeleBot(os.getenv("BOT_TOKEN"))
 
 
 @bot.message_handler(content_types=['photo','video'])
