@@ -17,7 +17,7 @@ def getKey(x):
 
 
 def main():
-    chat_id = -891469087
+    chat_id = -1001621587072
     seven_days_ago = datetime.now() - timedelta(days=7)
     query = "SELECT * FROM posts WHERE created_at > ?"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()

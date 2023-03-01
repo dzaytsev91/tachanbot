@@ -1,36 +1,56 @@
 import os
 import sqlite3
-from datetime import datetime
-
 import telebot
 
-bot = telebot.TeleBot(os.getenv("BOT_TOKEN"))
+bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), skip_pending=True)
 
 conn = sqlite3.connect("memes.db", check_same_thread=False)
 conn.execute(
-    "CREATE TABLE IF NOT EXISTS posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int);"
+    "CREATE TABLE IF NOT EXISTS posts (hash string, message_id int, message_thread_id int);"
 )
 
 
-def test(data):
-    cursor = conn.cursor()
-    query = "INSERT INTO posts (id, up_votes, down_votes) VALUES(?, ?, ?) ON CONFLICT(id) DO UPDATE SET up_votes={up_votes}, down_votes={down_votes};".format(
-        up_votes=data.options[0].voter_count, down_votes=data.options[1].voter_count
-    )
-    cursor.execute(
-        query, (data.id, data.options[0].voter_count, data.options[1].voter_count)
-    )
-    conn.commit()
+@bot.message_handler(content_types=["photo"])
+def check_duplicate_post(message):
+    for photo in message.photo:
+        res = conn.execute(
+            "SELECT message_id FROM posts WHERE hash = '{}' AND message_thread_id = {}".format(
+                photo.file_unique_id, message.message_thread_id
+            )
+        ).fetchone()
+        if res:
+            bot.send_message(
+                message.chat.id,
+                "Баян, ептыть",
+                reply_to_message_id=res[0],
+                message_thread_id=message.message_thread_id,
+            )
+            return
+        else:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO posts (hash, message_id, message_thread_id) VALUES(?, ?, ?)",
+                (photo.file_unique_id, message.id, message.message_thread_id),
+            )
+            conn.commit()
 
 
-@bot.message_handler(content_types=["photo", "video"])
-@bot.poll_handler(test)
-def send_rand_photo(message):
-    poll_data = bot.send_poll(message.chat.id, "Норм?", ["👍", "👎"])
-    query = "INSERT INTO posts (id, created_at, message_id, up_votes, down_votes) VALUES(?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
-    cursor = conn.cursor()
-    cursor.execute(query, (poll_data.poll.id, datetime.now(), poll_data.id - 1, 0, 0))
-    conn.commit()
+@bot.message_handler(content_types=["new_chat_members"])
+def hello(message):
+    bot.send_animation(
+        message.chat.id,
+        animation="CgACAgIAAx0CbVDbgwADPWQC7678gaLotBps8NtMHFdk7V5XAALJAgACWQAB8Evsy1CFaR2Cti4E",
+        caption="WelCUM CUMрад @{}".format(message.from_user.username),
+    )
+
+
+@bot.message_handler(content_types=["left_chat_member"])
+def goodbye(message):
+    bot.send_message(
+        message.chat.id,
+        "Ну и пиздуй",
+        reply_to_message_id=message.message_id
+    )
 
 
 def main():
