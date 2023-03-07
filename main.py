@@ -40,7 +40,9 @@ def hello(message):
     bot.send_animation(
         message.chat.id,
         animation="CgACAgIAAx0CbVDbgwADPWQC7678gaLotBps8NtMHFdk7V5XAALJAgACWQAB8Evsy1CFaR2Cti4E",
-        caption="WelCUM CUMрад @{}".format(message.from_user.username),
+        caption="WelCUM CUMрад",
+        reply_to_message_id=message.id,
+        message_thread_id=message.message_thread_id
     )
 
 
