@@ -42,27 +42,34 @@ def remove_text_from_memes(message):
 
 @bot.message_handler(content_types=["photo"])
 def check_duplicate_post(message):
-    for photo in message.photo:
-        res = conn.execute(
-            "SELECT message_id FROM posts WHERE hash = '{}' AND message_thread_id = {}".format(
-                photo.file_unique_id, message.message_thread_id
-            )
-        ).fetchone()
-        if res:
-            bot.send_message(
-                message.chat.id,
-                "Баян, ептыть",
-                reply_to_message_id=res[0],
-                message_thread_id=message.message_thread_id,
-            )
-            return
-        else:
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO posts (hash, message_id, message_thread_id) VALUES(?, ?, ?)",
-                (photo.file_unique_id, message.id, message.message_thread_id),
-            )
-            conn.commit()
+    if message.message_thread_id == memes_thread_id:
+        for photo in message.photo:
+            res = conn.execute(
+                "SELECT message_id FROM posts WHERE hash = '{}' AND message_thread_id = {}".format(
+                    photo.file_unique_id, message.message_thread_id
+                )
+            ).fetchone()
+            if res:
+                bot.send_message(
+                    message.chat.id,
+                    "Баян, ептыть",
+                    reply_to_message_id=res[0],
+                    message_thread_id=message.message_thread_id,
+                )
+                return
+            else:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO posts (hash, message_id, message_thread_id) VALUES(?, ?, ?)",
+                    (photo.file_unique_id, message.id, message.message_thread_id),
+                )
+                conn.commit()
+        bot.forward_message(
+            chat_id=message.chat.id,
+            from_chat_id=message.chat.id,
+            message_thread_id=flood_thread_id,
+            message_id=message.id,
+        )
 
 
 @bot.message_handler(content_types=["new_chat_members"])
