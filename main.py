@@ -69,6 +69,7 @@ def check_duplicate_post(message):
             from_chat_id=message.chat.id,
             message_thread_id=flood_thread_id,
             message_id=message.id,
+            disable_notification=True,
         )
 
 
