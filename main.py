@@ -10,6 +10,7 @@ bot.set_my_commands(
     ]
 )
 memes_thread_id = int(os.getenv("MEMES_THREAD_ID"))
+flood_thread_id = int(os.getenv("FLOOD_THREAD_ID"))
 
 conn = sqlite3.connect("memes.db", check_same_thread=False)
 conn.execute(
@@ -30,10 +31,11 @@ def get_topic_id(message):
 @bot.message_handler(content_types=["text"])
 def remove_text_from_memes(message):
     if message.message_thread_id == memes_thread_id and not message.photo:
-        bot.send_message(
-            message.chat.id,
-            "Сюда только мемы",
-            message_thread_id=message.message_thread_id,
+        bot.forward_message(
+            chat_id=message.chat.id,
+            from_chat_id=message.chat.id,
+            message_id=message.id,
+            message_thread_id=flood_thread_id,
         )
         bot.delete_message(message.chat.id, message.id)
 
