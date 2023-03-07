@@ -1,4 +1,5 @@
 import os
+import random
 import sqlite3
 import telebot
 
@@ -14,7 +15,11 @@ conn.execute(
 @bot.message_handler(content_types=["text"])
 def remove_text_from_memes(message):
     if message.message_thread_id == memes_thread_id and not message.photo:
-        bot.send_message(message.chat.id, "Сюда только мемы", message_thread_id=message.message_thread_id)
+        bot.send_message(
+            message.chat.id,
+            "Сюда только мемы",
+            message_thread_id=message.message_thread_id,
+        )
         bot.delete_message(message.chat.id, message.id)
 
 
@@ -45,12 +50,17 @@ def check_duplicate_post(message):
 
 @bot.message_handler(content_types=["new_chat_members"])
 def hello(message):
+    user_id = message.from_user.id
+    user_name = message.from_user.first_name
+    mention = "[" + user_name + "](tg://user?id=" + str(user_id) + ")"
+    bot_msg = "WelCUM CUMрад, {}".format(mention)
     bot.send_animation(
         message.chat.id,
         animation="CgACAgIAAx0CbVDbgwADPWQC7678gaLotBps8NtMHFdk7V5XAALJAgACWQAB8Evsy1CFaR2Cti4E",
-        caption="WelCUM CUMрад",
+        caption=bot_msg,
         reply_to_message_id=message.id,
-        message_thread_id=message.message_thread_id
+        message_thread_id=message.message_thread_id,
+        parse_mode="Markdown",
     )
 
 
@@ -58,8 +68,8 @@ def hello(message):
 def goodbye(message):
     bot.send_message(
         message.chat.id,
-        "Ну и пиздуй",
-        reply_to_message_id=message.message_id
+        random.choice(["Ну и пиздуй", "Аривидерчи", "Адьос", "Чао-какао", "Оревуар"]),
+        reply_to_message_id=message.message_id,
     )
 
 
