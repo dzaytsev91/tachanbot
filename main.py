@@ -4,12 +4,21 @@ import sqlite3
 import telebot
 
 bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), skip_pending=True)
+bot.set_my_commands([
+    telebot.types.BotCommand("/topicid", "print usage"),
+])
 memes_thread_id = int(os.getenv("MEMES_THREAD_ID"))
 
 conn = sqlite3.connect("memes.db", check_same_thread=False)
 conn.execute(
     "CREATE TABLE IF NOT EXISTS posts (hash string, message_id int, message_thread_id int);"
 )
+
+
+
+@bot.message_handler(commands=['topicid'])
+def get_topic_id(message):
+    return bot.send_message(message.chat.id, "here is topic id: {}".format(message.message_thread_id), reply_to_message_id=message.id, message_thread_id=message.message_thread_id)
 
 
 @bot.message_handler(content_types=["text"])
