@@ -3,11 +3,19 @@ import sqlite3
 import telebot
 
 bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), skip_pending=True)
+memes_thread_id = int(os.getenv("MEMES_THREAD_ID"))
 
 conn = sqlite3.connect("memes.db", check_same_thread=False)
 conn.execute(
     "CREATE TABLE IF NOT EXISTS posts (hash string, message_id int, message_thread_id int);"
 )
+
+
+@bot.message_handler(content_types=["text"])
+def remove_text_from_memes(message):
+    if message.message_thread_id == memes_thread_id and not message.photo:
+        bot.send_message(message.chat.id, "Сюда только мемы", message_thread_id=message.message_thread_id)
+        bot.delete_message(message.chat.id, message.id)
 
 
 @bot.message_handler(content_types=["photo"])
