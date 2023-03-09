@@ -1,6 +1,7 @@
 import os
 import random
 import sqlite3
+
 import telebot
 
 bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), skip_pending=True)
@@ -27,7 +28,22 @@ def get_topic_id(message):
         message_thread_id=message.message_thread_id,
     )
 
-@bot.message_handler(content_types=["text", "animation", "audio", "document", "photo", "sticker", "video", "video_note", "voice", "location", "contact"])
+
+@bot.message_handler(
+    content_types=[
+        "text",
+        "animation",
+        "audio",
+        "document",
+        "photo",
+        "sticker",
+        "video",
+        "video_note",
+        "voice",
+        "location",
+        "contact",
+    ]
+)
 def check_duplicate_post(message):
     if message.message_thread_id == memes_thread_id:
         bot.forward_message(
@@ -37,10 +53,17 @@ def check_duplicate_post(message):
             message_id=message.id,
             disable_notification=True,
         )
-        if message.text or message.sticker or message.video_note or message.voice or message.location or message.contact:
+        if (
+            message.text
+            or message.sticker
+            or message.video_note
+            or message.voice
+            or message.location
+            or message.contact
+        ):
             bot.delete_message(message.chat.id, message.id)
         elif message.photo:
-                proccess_photo_mem(message)
+            proccess_photo_mem(message)
 
 
 def proccess_photo_mem(message):
@@ -66,6 +89,7 @@ def proccess_photo_mem(message):
             )
             conn.commit()
 
+
 @bot.message_handler(content_types=["new_chat_members"])
 def hello(message):
     user_id = message.from_user.id
@@ -86,7 +110,16 @@ def hello(message):
 def goodbye(message):
     bot.send_message(
         message.chat.id,
-        random.choice(["Ну и пиздуй", "Аривидерчи", "Адьос", "Чао-какао", "Оревуар","Ассаламу алейкум, брат"]),
+        random.choice(
+            [
+                "Ну и пиздуй",
+                "Аривидерчи",
+                "Адьос",
+                "Чао-какао",
+                "Оревуар",
+                "Ассаламу алейкум, брат",
+            ]
+        ),
         reply_to_message_id=message.message_id,
     )
 
