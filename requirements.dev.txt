@@ -1,4 +1,4 @@
 ipdb
 black
 isort
-pre - commit
+pre-commit
