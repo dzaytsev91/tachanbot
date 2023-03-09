@@ -23,20 +23,24 @@ conn.execute(
 )
 
 
-@bot.message_handler(content_types=["photo", "video"])
+@bot.message_handler(
+    content_types=[
+        "text",
+        "animation",
+        "audio",
+        "document",
+        "photo",
+        "sticker",
+        "video",
+        "video_note",
+        "voice",
+        "location",
+        "contact",
+    ]
+)
 def send_rand_photo(message):
     if message.message_thread_id != memes_thread_id:
         return
-    poll_data = bot.send_poll(
-        message.chat.id,
-        " ",
-        ["👍", "👎"],
-        message_thread_id=message.message_thread_id,
-    )
-    query = "INSERT INTO memes_posts (id, created_at, message_id, up_votes, down_votes) VALUES(?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
-    cursor = conn.cursor()
-    cursor.execute(query, (poll_data.poll.id, datetime.now(), poll_data.id - 1, 0, 0))
-    conn.commit()
     bot.forward_message(
         chat_id=message.chat.id,
         from_chat_id=message.chat.id,
@@ -47,14 +51,25 @@ def send_rand_photo(message):
     if (
         message.text
         or message.sticker
-        or message.video_note
         or message.voice
         or message.location
         or message.contact
     ):
         bot.delete_message(message.chat.id, message.id)
-    elif message.photo:
+    elif message.photo or message.video_note:
         proccess_photo_mem(message)
+        poll_data = bot.send_poll(
+            message.chat.id,
+            " ",
+            ["👍", "👎"],
+            message_thread_id=message.message_thread_id,
+        )
+        query = "INSERT INTO memes_posts (id, created_at, message_id, up_votes, down_votes) VALUES(?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
+        cursor = conn.cursor()
+        cursor.execute(
+            query, (poll_data.poll.id, datetime.now(), poll_data.id - 1, 0, 0)
+        )
+        conn.commit()
 
 
 @bot.message_handler(commands=["topicid"])
