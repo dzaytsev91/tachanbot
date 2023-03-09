@@ -1,6 +1,7 @@
 import os
 import random
 import sqlite3
+
 import telebot
 
 bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), skip_pending=True)
@@ -28,42 +29,23 @@ def get_topic_id(message):
     )
 
 
-@bot.message_handler(content_types=["text"])
-def remove_text_from_memes(message):
-    if message.message_thread_id == memes_thread_id and not message.photo:
-        bot.forward_message(
-            chat_id=message.chat.id,
-            from_chat_id=message.chat.id,
-            message_id=message.id,
-            message_thread_id=flood_thread_id,
-        )
-        bot.delete_message(message.chat.id, message.id)
-
-
-@bot.message_handler(content_types=["photo"])
+@bot.message_handler(
+    content_types=[
+        "text",
+        "animation",
+        "audio",
+        "document",
+        "photo",
+        "sticker",
+        "video",
+        "video_note",
+        "voice",
+        "location",
+        "contact",
+    ]
+)
 def check_duplicate_post(message):
     if message.message_thread_id == memes_thread_id:
-        for photo in message.photo:
-            res = conn.execute(
-                "SELECT message_id FROM posts WHERE hash = '{}' AND message_thread_id = {}".format(
-                    photo.file_unique_id, message.message_thread_id
-                )
-            ).fetchone()
-            if res:
-                bot.send_message(
-                    message.chat.id,
-                    "Баян, ептыть",
-                    reply_to_message_id=res[0],
-                    message_thread_id=message.message_thread_id,
-                )
-                return
-            else:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO posts (hash, message_id, message_thread_id) VALUES(?, ?, ?)",
-                    (photo.file_unique_id, message.id, message.message_thread_id),
-                )
-                conn.commit()
         bot.forward_message(
             chat_id=message.chat.id,
             from_chat_id=message.chat.id,
@@ -71,6 +53,41 @@ def check_duplicate_post(message):
             message_id=message.id,
             disable_notification=True,
         )
+        if (
+            message.text
+            or message.sticker
+            or message.video_note
+            or message.voice
+            or message.location
+            or message.contact
+        ):
+            bot.delete_message(message.chat.id, message.id)
+        elif message.photo:
+            proccess_photo_mem(message)
+
+
+def proccess_photo_mem(message):
+    for photo in message.photo:
+        res = conn.execute(
+            "SELECT message_id FROM posts WHERE hash = '{}' AND message_thread_id = {}".format(
+                photo.file_unique_id, message.message_thread_id
+            )
+        ).fetchone()
+        if res:
+            bot.send_message(
+                message.chat.id,
+                "Баян, ептыть",
+                reply_to_message_id=res[0],
+                message_thread_id=message.message_thread_id,
+            )
+            return
+        else:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO posts (hash, message_id, message_thread_id) VALUES(?, ?, ?)",
+                (photo.file_unique_id, message.id, message.message_thread_id),
+            )
+            conn.commit()
 
 
 @bot.message_handler(content_types=["new_chat_members"])
@@ -93,7 +110,16 @@ def hello(message):
 def goodbye(message):
     bot.send_message(
         message.chat.id,
-        random.choice(["Ну и пиздуй", "Аривидерчи", "Адьос", "Чао-какао", "Оревуар"]),
+        random.choice(
+            [
+                "Ну и пиздуй",
+                "Аривидерчи",
+                "Адьос",
+                "Чао-какао",
+                "Оревуар",
+                "Ассаламу алейкум, брат",
+            ]
+        ),
         reply_to_message_id=message.message_id,
     )
 
