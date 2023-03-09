@@ -37,6 +37,24 @@ def send_rand_photo(message):
     cursor = conn.cursor()
     cursor.execute(query, (poll_data.poll.id, datetime.now(), poll_data.id - 1, 0, 0))
     conn.commit()
+    bot.forward_message(
+        chat_id=message.chat.id,
+        from_chat_id=message.chat.id,
+        message_thread_id=flood_thread_id,
+        message_id=message.id,
+        disable_notification=True,
+    )
+    if (
+        message.text
+        or message.sticker
+        or message.video_note
+        or message.voice
+        or message.location
+        or message.contact
+    ):
+        bot.delete_message(message.chat.id, message.id)
+    elif message.photo:
+        proccess_photo_mem(message)
 
 
 @bot.message_handler(commands=["topicid"])
@@ -47,43 +65,6 @@ def get_topic_id(message):
         reply_to_message_id=message.id,
         message_thread_id=message.message_thread_id,
     )
-
-
-@bot.message_handler(
-    content_types=[
-        "text",
-        "animation",
-        "audio",
-        "document",
-        "photo",
-        "sticker",
-        "video",
-        "video_note",
-        "voice",
-        "location",
-        "contact",
-    ]
-)
-def check_duplicate_post(message):
-    if message.message_thread_id == memes_thread_id:
-        bot.forward_message(
-            chat_id=message.chat.id,
-            from_chat_id=message.chat.id,
-            message_thread_id=flood_thread_id,
-            message_id=message.id,
-            disable_notification=True,
-        )
-        if (
-            message.text
-            or message.sticker
-            or message.video_note
-            or message.voice
-            or message.location
-            or message.contact
-        ):
-            bot.delete_message(message.chat.id, message.id)
-        elif message.photo:
-            proccess_photo_mem(message)
 
 
 def proccess_photo_mem(message):
