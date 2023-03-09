@@ -29,7 +29,7 @@ def send_rand_photo(message):
         return
     poll_data = bot.send_poll(
         message.chat.id,
-        "Норм?",
+        "",
         ["👍", "👎"],
         message_thread_id=message.message_thread_id,
     )
