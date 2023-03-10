@@ -6,6 +6,7 @@ import telebot
 
 bot = telebot.TeleBot(os.getenv("BOT_TOKEN"))
 memes_chat_id = int(os.getenv("MEMES_CHAT_ID"))
+flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 
 conn = sqlite3.connect("memes.db", check_same_thread=False)
 conn.execute(
@@ -30,7 +31,7 @@ def main():
                 chat_id,
                 "🥇",
                 reply_to_message_id=row[4],
-                message_thread_id=memes_chat_id,
+                message_thread_id=flood_thread_id,
             )
             first = 1
             continue
@@ -39,7 +40,7 @@ def main():
                 chat_id,
                 "🥈",
                 reply_to_message_id=row[4],
-                message_thread_id=memes_chat_id,
+                message_thread_id=flood_thread_id,
             )
             second = 1
             continue
@@ -48,7 +49,7 @@ def main():
                 chat_id,
                 "🥉",
                 reply_to_message_id=row[4],
-                message_thread_id=memes_chat_id,
+                message_thread_id=flood_thread_id,
             )
             third = 1
             continue
