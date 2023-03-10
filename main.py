@@ -3,16 +3,18 @@ import random
 import sqlite3
 from datetime import datetime
 
+import cachetools
 import telebot
 
+ttl_cache = cachetools.TTLCache(maxsize=128, ttl=100)
 bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), skip_pending=True)
 bot.set_my_commands(
     [
         telebot.types.BotCommand("/topicid", "print topic id"),
     ]
 )
-memes_thread_id = int(os.getenv("MEMES_THREAD_ID"))
-flood_thread_id = int(os.getenv("FLOOD_THREAD_ID"))
+memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
+flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 
 conn = sqlite3.connect("memes.db", check_same_thread=False)
 conn.execute(
@@ -21,6 +23,19 @@ conn.execute(
 conn.execute(
     "CREATE TABLE IF NOT EXISTS memes_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int);"
 )
+
+
+def create_pool(message):
+    poll_data = bot.send_poll(
+        message.chat.id,
+        " ",
+        ["👍", "👎"],
+        message_thread_id=message.message_thread_id,
+    )
+    query = "INSERT INTO memes_posts (id, created_at, message_id, up_votes, down_votes) VALUES(?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
+    cursor = conn.cursor()
+    cursor.execute(query, (poll_data.poll.id, datetime.now(), poll_data.id - 1, 0, 0))
+    conn.commit()
 
 
 @bot.message_handler(
@@ -58,18 +73,12 @@ def send_rand_photo(message):
         bot.delete_message(message.chat.id, message.id)
     elif message.photo or message.video_note:
         proccess_photo_mem(message)
-        poll_data = bot.send_poll(
-            message.chat.id,
-            " ",
-            ["👍", "👎"],
-            message_thread_id=message.message_thread_id,
-        )
-        query = "INSERT INTO memes_posts (id, created_at, message_id, up_votes, down_votes) VALUES(?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
-        cursor = conn.cursor()
-        cursor.execute(
-            query, (poll_data.poll.id, datetime.now(), poll_data.id - 1, 0, 0)
-        )
-        conn.commit()
+        if message.media_group_id:
+            if not ttl_cache.get(message.media_group_id):
+                ttl_cache[message.media_group_id] = 1
+                create_pool(message)
+        else:
+            create_pool(message)
 
 
 @bot.message_handler(commands=["topicid"])
@@ -114,7 +123,7 @@ def hello(message):
     bot_msg = "WelCUM CUMрад, {}".format(mention)
     bot.send_animation(
         message.chat.id,
-        animation="CgACAgIAAx0CbVDbgwADPWQC7678gaLotBps8NtMHFdk7V5XAALJAgACWQAB8Evsy1CFaR2Cti4E",
+        animation="CgACAgIAAx0CbVDbgwADgmQK3OU17pJiiqQ7F3JnXicKFs-RAAKPKgACVaJYSOSP9AABul7nXS8E",
         caption=bot_msg,
         reply_to_message_id=message.id,
         message_thread_id=message.message_thread_id,
