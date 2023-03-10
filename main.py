@@ -104,6 +104,8 @@ def get_topic_id(message):
 
 
 def proccess_photo_mem(message):
+    if not message.photo:
+        return
     for photo in message.photo:
         res = conn.execute(
             "SELECT message_id FROM posts WHERE hash = '{}' AND message_thread_id = {}".format(
