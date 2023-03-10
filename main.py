@@ -83,7 +83,7 @@ def send_rand_photo(message):
         or message.contact
     ):
         bot.delete_message(message.chat.id, message.id)
-    elif message.photo or message.video_note:
+    else:
         proccess_photo_mem(message)
         if message.media_group_id:
             if not ttl_cache.get(message.media_group_id):
