@@ -7,7 +7,7 @@ import cachetools
 import telebot
 
 ttl_cache = cachetools.TTLCache(maxsize=128, ttl=100)
-bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), skip_pending=False)
+bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), skip_pending=True)
 bot.set_my_commands(
     [
         telebot.types.BotCommand("/topicid", "print topic id"),
