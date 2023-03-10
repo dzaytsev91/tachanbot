@@ -123,7 +123,7 @@ def hello(message):
     bot_msg = "WelCUM CUMрад, {}".format(mention)
     bot.send_animation(
         message.chat.id,
-        animation="CgACAgIAAx0CbVDbgwADgmQK3OU17pJiiqQ7F3JnXicKFs-RAAKPKgACVaJYSOSP9AABul7nXS8E",
+        animation="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWEwY2MwY2Q0MTU2Mjg0OWZiNzk0NmY0ZDQ5MWNjMzczODI1YWFmZiZjdD1n/FeAs1kvsWP4OvWa9zt/giphy-downsized-large.gif",
         caption=bot_msg,
         reply_to_message_id=message.id,
         message_thread_id=message.message_thread_id,
