@@ -7,7 +7,7 @@ import cachetools
 import telebot
 
 ttl_cache = cachetools.TTLCache(maxsize=128, ttl=100)
-bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), skip_pending=True)
+bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), skip_pending=False)
 bot.set_my_commands(
     [
         telebot.types.BotCommand("/topicid", "print topic id"),
@@ -25,6 +25,18 @@ conn.execute(
 )
 
 
+def update_votes(data):
+    cursor = conn.cursor()
+    query = "INSERT INTO memes_posts (id, up_votes, down_votes) VALUES(?, ?, ?) ON CONFLICT(id) DO UPDATE SET up_votes={up_votes}, down_votes={down_votes};".format(
+        up_votes=data.options[0].voter_count, down_votes=data.options[1].voter_count
+    )
+    cursor.execute(
+        query, (data.id, data.options[0].voter_count, data.options[1].voter_count)
+    )
+    conn.commit()
+
+
+@bot.poll_handler(update_votes)
 def create_pool(message):
     poll_data = bot.send_poll(
         message.chat.id,
