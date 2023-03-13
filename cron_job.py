@@ -30,7 +30,7 @@ def main():
             bot.send_message(
                 memes_chat_id,
                 "🥇",
-                reply_to_message_id=row[4] - 1,
+                reply_to_message_id=row[4],
                 message_thread_id=memes_thread_id,
             )
             first = 1
@@ -39,7 +39,7 @@ def main():
             bot.send_message(
                 memes_chat_id,
                 "🥈",
-                reply_to_message_id=row[4] - 1,
+                reply_to_message_id=row[4],
                 message_thread_id=memes_thread_id,
             )
             second = 1
@@ -48,7 +48,7 @@ def main():
             bot.send_message(
                 memes_chat_id,
                 "🥉",
-                reply_to_message_id=row[4] - 1,
+                reply_to_message_id=row[4],
                 message_thread_id=memes_thread_id,
             )
             third = 1
