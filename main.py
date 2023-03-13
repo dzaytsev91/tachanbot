@@ -11,6 +11,7 @@ bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), skip_pending=True)
 bot.set_my_commands(
     [
         telebot.types.BotCommand("/topicid", "print topic id"),
+        telebot.types.BotCommand("/chatid", "print chat id"),
     ]
 )
 memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
