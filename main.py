@@ -103,6 +103,16 @@ def get_topic_id(message):
     )
 
 
+@bot.message_handler(commands=["chatid"])
+def get_chat_id(message):
+    return bot.send_message(
+        message.chat.id,
+        "here is chat id: {}".format(message.chat.id),
+        reply_to_message_id=message.id,
+        message_thread_id=message.message_thread_id,
+    )
+
+
 def proccess_photo_mem(message):
     if not message.photo:
         return
