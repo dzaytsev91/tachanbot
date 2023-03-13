@@ -19,7 +19,6 @@ def getKey(x):
 
 
 def main():
-    chat_id = -1001834015619
     seven_days_ago = datetime.now() - timedelta(days=7)
     query = "SELECT * FROM memes_posts WHERE created_at > ?"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()
@@ -28,7 +27,7 @@ def main():
     for row in reversed(rows):
         if first is None:
             bot.send_message(
-                chat_id,
+                memes_chat_id,
                 "🥇",
                 reply_to_message_id=row[4],
                 message_thread_id=flood_thread_id,
@@ -37,7 +36,7 @@ def main():
             continue
         if second is None:
             bot.send_message(
-                chat_id,
+                memes_chat_id,
                 "🥈",
                 reply_to_message_id=row[4],
                 message_thread_id=flood_thread_id,
@@ -46,7 +45,7 @@ def main():
             continue
         if third is None:
             bot.send_message(
-                chat_id,
+                memes_chat_id,
                 "🥉",
                 reply_to_message_id=row[4],
                 message_thread_id=flood_thread_id,
