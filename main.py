@@ -70,15 +70,15 @@ def create_pool(message):
     ]
 )
 def send_rand_photo(message):
-    # if message.message_thread_id != memes_thread_id:
-    #     return
-    # bot.forward_message(
-    #     chat_id=message.chat.id,
-    #     from_chat_id=message.chat.id,
-    #     message_thread_id=flood_thread_id,
-    #     message_id=message.id,
-    #     disable_notification=True,
-    # )
+    if message.message_thread_id != memes_thread_id:
+        return
+    bot.forward_message(
+        chat_id=message.chat.id,
+        from_chat_id=message.chat.id,
+        message_thread_id=flood_thread_id,
+        message_id=message.id,
+        disable_notification=True,
+    )
     if (
         message.text
         or message.sticker
