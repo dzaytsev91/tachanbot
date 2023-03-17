@@ -70,6 +70,13 @@ def create_pool(message):
     ]
 )
 def send_rand_photo(message):
+    if message.text.lower() == "нет":
+        bot.send_message(
+            message.chat.id,
+            "Пидора ответ",
+            reply_to_message_id=message.id,
+            message_thread_id=message.message_thread_id,
+        )
     if message.message_thread_id != memes_thread_id:
         return
     bot.forward_message(
