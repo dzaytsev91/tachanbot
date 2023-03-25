@@ -17,7 +17,7 @@ def main():
     query = "SELECT user_id, MAX(username), SUM(up_votes), SUM(down_votes) FROM memes_posts WHERE created_at > ? GROUP BY user_id ORDER BY 2 DESC,3 DESC LIMIT 3"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()
     msg = []
-    stack = ["🥉", "🥇", "🥈"]
+    stack = ["🥉", "🥈", "🥇"]
     for row in rows:
         user_id, username, up_votes, down_votes = row
         msg.append(
