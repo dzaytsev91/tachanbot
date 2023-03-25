@@ -22,7 +22,7 @@ conn.execute(
     "CREATE TABLE IF NOT EXISTS posts (hash string, message_id int, message_thread_id int);"
 )
 conn.execute(
-    "CREATE TABLE IF NOT EXISTS memes_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int);"
+    "CREATE TABLE IF NOT EXISTS memes_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int, username string);"
 )
 
 
@@ -45,11 +45,19 @@ def create_pool(message):
         ["👍", "👎"],
         message_thread_id=message.message_thread_id,
     )
-    query = "INSERT INTO memes_posts (id, created_at, message_id, up_votes, down_votes, user_id) VALUES(?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
+    query = "INSERT INTO memes_posts (id, created_at, message_id, up_votes, down_votes, user_id, username) VALUES(?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
     cursor = conn.cursor()
     cursor.execute(
         query,
-        (poll_data.poll.id, datetime.now(), message.id, 0, 0, message.from_user.id),
+        (
+            poll_data.poll.id,
+            datetime.now(),
+            message.id,
+            0,
+            0,
+            message.from_user.id,
+            message.from_user.first_name,
+        ),
     )
     conn.commit()
 
