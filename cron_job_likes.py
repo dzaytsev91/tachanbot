@@ -16,23 +16,22 @@ def main():
     seven_days_ago = datetime.now() - timedelta(days=7)
     query = "SELECT user_id, MAX(username), SUM(up_votes), SUM(down_votes) FROM memes_posts WHERE created_at > ? GROUP BY user_id ORDER BY 2 DESC,3 DESC LIMIT 3"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()
-    msg = []
     stack = ["🥉", "🥈", "🥇"]
     for row in rows:
         user_id, username, up_votes, down_votes = row
-        msg.append(
+        msg = (
             "["
             + username
             + "](tg://user?id="
             + str(user_id)
             + ") 👍 {}, 👎 {} - {}".format(up_votes, down_votes, stack.pop())
         )
-    bot.send_message(
-        memes_chat_id,
-        "\n".join(msg),
-        message_thread_id=flood_thread_id,
-        parse_mode="Markdown",
-    )
+        bot.send_message(
+            memes_chat_id,
+            msg,
+            message_thread_id=flood_thread_id,
+            parse_mode="Markdown",
+        )
 
 
 if __name__ == "__main__":
