@@ -16,3 +16,12 @@ services:
       MEMES_THREAD_ID: "1"
     volumes:
       - "./memes.db:/app/memes.db"
+
+  cron_likes:
+    build: .
+    entrypoint: "python cron_job.py"
+    environment:
+      BOT_TOKEN: "SECRET"
+      MEMES_THREAD_ID: "1"
+    volumes:
+      - "./memes.db:/app/memes.db"
