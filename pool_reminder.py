@@ -15,7 +15,7 @@ conn = sqlite3.connect("memes.db", check_same_thread=False)
 def main():
     bot.send_message(
         memes_chat_id,
-        "Господа и господессы забываем проголосовать https://t.me/c/1621587072/3097/29200",
+        "Господа и господессы не забываем проголосовать https://t.me/c/1621587072/3097/29200",
         message_thread_id=flood_thread_id,
         parse_mode="Markdown",
     )
