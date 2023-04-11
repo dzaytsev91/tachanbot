@@ -16,7 +16,7 @@ def main():
     seven_days_ago = datetime.now() - timedelta(days=7)
     query = "SELECT user_id, MAX(username), count(*) FROM memes_posts WHERE created_at > ? GROUP BY user_id ORDER BY 3 DESC, 3 DESC LIMIT 3"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()
-    msg = ["Количество сброшенных мемов"]
+    msg = ["Количество сброшенных мемов\n"]
     stack = ["🥉", "🥈", "🥇"]
     for row in rows:
         user_id, username, memes_count = row
@@ -25,7 +25,8 @@ def main():
             + username
             + "](tg://user?id="
             + str(user_id)
-            + "{} - {}".format(memes_count, stack.pop())
+            + ")"
+            + " {} - {}".format(memes_count, stack.pop())
         )
     bot.send_message(
         memes_chat_id,
