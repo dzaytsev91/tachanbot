@@ -15,45 +15,18 @@ conn.execute(
 )
 
 
-def getKey(x):
-    return [x[1], -x[2]]
-
-
 def main():
     seven_days_ago = datetime.now() - timedelta(days=7)
-    query = "SELECT * FROM memes_posts WHERE created_at > ?"
+    query = "SELECT * FROM memes_posts WHERE created_at > ? ORDER BY up_votes DESC, down_votes DESC, created_at ASC LIMIT 3"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()
-    rows.sort(key=getKey)
-    first, second, third = None, None, None
-    for row in reversed(rows):
-        if first is None:
-            bot.send_message(
-                memes_chat_id,
-                "🥇",
-                reply_to_message_id=row[4],
-                message_thread_id=memes_thread_id,
-            )
-            first = 1
-            continue
-        if second is None:
-            bot.send_message(
-                memes_chat_id,
-                "🥈",
-                reply_to_message_id=row[4],
-                message_thread_id=memes_thread_id,
-            )
-            second = 1
-            continue
-        if third is None:
-            bot.send_message(
-                memes_chat_id,
-                "🥉",
-                reply_to_message_id=row[4],
-                message_thread_id=memes_thread_id,
-            )
-            third = 1
-            continue
-        return
+    stack = ["🥉", "🥈", "🥇"]
+    for row in rows:
+        bot.send_message(
+            memes_chat_id,
+            stack.pop(),
+            reply_to_message_id=row[4],
+            message_thread_id=memes_thread_id,
+        )
 
 
 if __name__ == "__main__":
