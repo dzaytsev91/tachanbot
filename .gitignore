@@ -129,3 +129,5 @@ dmypy.json
 .pyre/
 .idea/
 memes.db
+creds_dev.env
+creds_prod.env

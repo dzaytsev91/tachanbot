@@ -11,7 +11,7 @@ memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
 
 conn = sqlite3.connect("memes.db", check_same_thread=False)
 conn.execute(
-    "CREATE TABLE IF NOT EXISTS memes_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int);"
+    "CREATE TABLE IF NOT EXISTS memes_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, old_hat_votes int);"
 )
 
 

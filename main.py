@@ -22,17 +22,25 @@ conn.execute(
     "CREATE TABLE IF NOT EXISTS posts (hash string, message_id int, message_thread_id int, user_id int);"
 )
 conn.execute(
-    "CREATE TABLE IF NOT EXISTS memes_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int, username string);"
+    "CREATE TABLE IF NOT EXISTS memes_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int, username string, old_hat_votes int);"
 )
 
 
 def update_votes(data):
     cursor = conn.cursor()
-    query = "INSERT INTO memes_posts (id, up_votes, down_votes) VALUES(?, ?, ?) ON CONFLICT(id) DO UPDATE SET up_votes={up_votes}, down_votes={down_votes};".format(
-        up_votes=data.options[0].voter_count, down_votes=data.options[1].voter_count
+    query = "INSERT INTO memes_posts (id, up_votes, down_votes, old_hat_votes) VALUES(?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET up_votes={up_votes}, down_votes={down_votes}, old_hat_votes={old_hat_votes};".format(
+        up_votes=data.options[0].voter_count,
+        down_votes=data.options[1].voter_count,
+        old_hat_votes=data.options[2].voter_count,
     )
     cursor.execute(
-        query, (data.id, data.options[0].voter_count, data.options[1].voter_count)
+        query,
+        (
+            data.id,
+            data.options[0].voter_count,
+            data.options[1].voter_count,
+            data.options[2].voter_count,
+        ),
     )
     conn.commit()
 
@@ -42,10 +50,10 @@ def create_pool(message):
     poll_data = bot.send_poll(
         message.chat.id,
         " ",
-        ["👍", "👎"],
+        ["👍", "👎", "🪗"],
         message_thread_id=message.message_thread_id,
     )
-    query = "INSERT INTO memes_posts (id, created_at, message_id, up_votes, down_votes, user_id, username) VALUES(?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
+    query = "INSERT INTO memes_posts (id, created_at, message_id, up_votes, down_votes, old_hat_votes, user_id, username) VALUES(?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
     cursor = conn.cursor()
     cursor.execute(
         query,
@@ -53,6 +61,7 @@ def create_pool(message):
             poll_data.poll.id,
             datetime.now(),
             message.id,
+            0,
             0,
             0,
             message.from_user.id,
