@@ -24,6 +24,7 @@ def main():
         + "](tg://user?id="
         + str(user_id)
         + ") - 🪗 {}".format(old_hat_votes)
+        + "\nГоните его насмехайтесь над ним"
     )
     bot.send_message(
         memes_chat_id,
