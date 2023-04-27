@@ -19,7 +19,7 @@ flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 
 conn = sqlite3.connect("memes.db", check_same_thread=False)
 conn.execute(
-    "CREATE TABLE IF NOT EXISTS posts (hash string, message_id int, message_thread_id int);"
+    "CREATE TABLE IF NOT EXISTS posts (hash string, message_id int, message_thread_id int, user_id int);"
 )
 conn.execute(
     "CREATE TABLE IF NOT EXISTS memes_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int, username string);"
@@ -129,26 +129,17 @@ def proccess_photo_mem(message):
     if not message.photo:
         return
     for photo in message.photo:
-        res = conn.execute(
-            "SELECT message_id FROM posts WHERE hash = '{}' AND message_thread_id = {}".format(
-                photo.file_unique_id, message.message_thread_id
-            )
-        ).fetchone()
-        if res:
-            bot.send_message(
-                message.chat.id,
-                "Баян, ептыть",
-                reply_to_message_id=res[0],
-                message_thread_id=message.message_thread_id,
-            )
-            return
-        else:
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO posts (hash, message_id, message_thread_id) VALUES(?, ?, ?)",
-                (photo.file_unique_id, message.id, message.message_thread_id),
-            )
-            conn.commit()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO posts (hash, message_id, message_thread_id, user_id) VALUES(?, ?, ?, ?) ON CONFLICT DO NOTHING",
+            (
+                photo.file_unique_id,
+                message.id,
+                message.message_thread_id,
+                message.from_user.id,
+            ),
+        )
+        conn.commit()
 
 
 @bot.message_handler(content_types=["new_chat_members"])
