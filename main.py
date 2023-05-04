@@ -117,7 +117,14 @@ def get_chat_id(message):
     plt.title("Memes count")
     plt.grid()
     plt.savefig("test.png", dpi=300)
-    return bot.send_photo(message.chat.id, photo=open("test.png", "rb"))
+    plt.close()
+    with open("test.png", "rb") as f:
+        content = f.read()
+    return bot.send_photo(
+        message.chat.id,
+        message_thread_id=message.message_thread_id,
+        photo=content,
+    )
 
 
 @bot.message_handler(
