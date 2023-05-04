@@ -1,2 +1,4 @@
 pyTelegramBotAPI
 cachetools
+matplotlib
+pandas
