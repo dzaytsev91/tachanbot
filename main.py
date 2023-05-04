@@ -1,17 +1,23 @@
 import os
 import random
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import cachetools
+import matplotlib
+import matplotlib.pyplot as plt
+import pandas as pd
 import telebot
 
+matplotlib.use("agg")
+matplotlib.rc("figure", figsize=(20, 5))
 ttl_cache = cachetools.TTLCache(maxsize=128, ttl=100)
 bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), skip_pending=True)
 bot.set_my_commands(
     [
         telebot.types.BotCommand("/topicid", "print topic id"),
         telebot.types.BotCommand("/chatid", "print chat id"),
+        telebot.types.BotCommand("/statistic", "show memes statistic"),
     ]
 )
 memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
@@ -71,6 +77,49 @@ def create_pool(message):
     conn.commit()
 
 
+@bot.message_handler(commands=["topicid"])
+def get_topic_id(message):
+    return bot.send_message(
+        message.chat.id,
+        "here is topic id: {}".format(message.message_thread_id),
+        reply_to_message_id=message.id,
+        message_thread_id=message.message_thread_id,
+    )
+
+
+@bot.message_handler(commands=["chatid"])
+def get_chat_id(message):
+    return bot.send_message(
+        message.chat.id,
+        "here is chat id: {}".format(message.chat.id),
+        reply_to_message_id=message.id,
+        message_thread_id=message.message_thread_id,
+    )
+
+
+@bot.message_handler(commands=["statistic"])
+def get_chat_id(message):
+    seven_days_ago = datetime.now() - timedelta(days=7)
+    query = "select date(created_at), count(*) from memes_posts WHERE created_at > ? group by date(created_at) order by date(created_at);"
+    rows = conn.execute(query, (seven_days_ago,)).fetchall()
+    date_time = []
+    data = []
+    for row in rows:
+        date_time.append(row[0])
+        data.append(row[1])
+
+    date_time = pd.to_datetime(date_time)
+    df = pd.DataFrame()
+    df["value"] = data
+    df = df.set_index(date_time)
+    plt.plot(df, **{"marker": "o"})
+    plt.gcf().autofmt_xdate()
+    plt.title("Memes count")
+    plt.grid()
+    plt.savefig("test.png", dpi=300)
+    return bot.send_photo(message.chat.id, photo=open("test.png", "rb"))
+
+
 @bot.message_handler(
     content_types=[
         "text",
@@ -112,26 +161,6 @@ def send_rand_photo(message):
                 create_pool(message)
         else:
             create_pool(message)
-
-
-@bot.message_handler(commands=["topicid"])
-def get_topic_id(message):
-    return bot.send_message(
-        message.chat.id,
-        "here is topic id: {}".format(message.message_thread_id),
-        reply_to_message_id=message.id,
-        message_thread_id=message.message_thread_id,
-    )
-
-
-@bot.message_handler(commands=["chatid"])
-def get_chat_id(message):
-    return bot.send_message(
-        message.chat.id,
-        "here is chat id: {}".format(message.chat.id),
-        reply_to_message_id=message.id,
-        message_thread_id=message.message_thread_id,
-    )
 
 
 def proccess_photo_mem(message):
