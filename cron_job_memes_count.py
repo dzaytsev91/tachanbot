@@ -20,14 +20,13 @@ def main():
     stack = ["🥉", "🥈", "🥇"]
     for row in rows:
         user_id, username, memes_count = row
-        msg.append(
-            "["
-            + username
-            + "](tg://user?id="
-            + str(user_id)
-            + ")"
-            + " {} - {}".format(memes_count, stack.pop())
+        message = "[{username}](tg://user?id={user_id}) {memes_count} - {medal}".format(
+            username=username,
+            user_id=user_id,
+            memes_count=memes_count,
+            medal=stack.pop(),
         )
+        msg.append(message)
     bot.send_message(
         memes_chat_id,
         "\n".join(msg),

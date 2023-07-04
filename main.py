@@ -99,7 +99,7 @@ def get_chat_id(message):
 
 @bot.message_handler(commands=["statistic"])
 def get_chat_id(message):
-    seven_days_ago = datetime.now() - timedelta(days=7)
+    seven_days_ago = datetime.now() - timedelta(days=14)
     query = "select date(created_at), count(*) from memes_posts WHERE created_at > ? group by date(created_at) order by date(created_at);"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()
     date_time = []

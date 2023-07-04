@@ -14,28 +14,25 @@ conn = sqlite3.connect("memes.db", check_same_thread=False)
 
 def main():
     seven_days_ago = datetime.now() - timedelta(days=7)
-    query = "SELECT user_id, MAX(username), SUM(up_votes), SUM(down_votes) FROM memes_posts WHERE created_at > ? GROUP BY user_id ORDER BY 3 DESC,4 ASC"
+    query = "SELECT user_id, MAX(username), SUM(up_votes), SUM(down_votes), COUNT(*) FROM memes_posts WHERE created_at > ? GROUP BY user_id ORDER BY 3 DESC,4 ASC"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()
     msg = []
     stack = ["🥉", "🥈", "🥇"]
     for row in rows:
-        user_id, username, up_votes, down_votes = row
+        user_id, username, up_votes, down_votes, memes_count = row
+        reward = "💩"
         if stack:
-            msg.append(
-                "["
-                + username
-                + "](tg://user?id="
-                + str(user_id)
-                + ") 👍 {}, 👎 {} - {}".format(up_votes, down_votes, stack.pop())
+            reward = stack.pop()
+        msg.append(
+            "[{username}](tg://user?id={user_id}) memes - {memes_count} 👍 {up_votes}, 👎 {down_votes} - {reward}".format(
+                memes_count=memes_count,
+                username=username,
+                user_id=user_id,
+                up_votes=up_votes,
+                down_votes=down_votes,
+                reward=reward,
             )
-        else:
-            msg.append(
-                "["
-                + username
-                + "](tg://user?id="
-                + str(user_id)
-                + ") 👍 {}, 👎 {} - 💩".format(up_votes, down_votes)
-            )
+        )
     bot.send_message(
         memes_chat_id,
         "\n".join(msg),
