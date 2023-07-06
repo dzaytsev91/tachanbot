@@ -14,21 +14,23 @@ conn = sqlite3.connect("memes.db", check_same_thread=False)
 
 def main():
     seven_days_ago = datetime.now() - timedelta(days=7)
-    query = "SELECT user_id,username, ROUND(CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float), 3) FROM memes_posts WHERE created_at > ? GROUP BY user_id, username ORDER BY CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float) DESC"
+    query = "SELECT user_id,username, ROUND(CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float), 3), SUM(up_votes), COUNT(*) FROM memes_posts WHERE created_at > ? GROUP BY user_id, username ORDER BY CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float) DESC"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()
-    msg = ["AML - Average Meme Likes (SUM(up_votes) / total_memes_count)"]
+    msg = ["AML - Average Meme Likes\n"]
     stack = ["🥉", "🥈", "🥇"]
     for row in rows:
-        user_id, username, aml = row
+        user_id, username, aml, total_up_votes, total_count = row
         reward = "🤡"
         if stack:
             reward = stack.pop()
         msg.append(
-            "[{username}](tg://user?id={user_id}) AML - {aml} - {reward}".format(
+            "[{username}](tg://user?id={user_id}) - {aml} - {reward} (total up votes {total_up_votes}, total memes count {total_count})".format(
                 username=username,
                 user_id=user_id,
                 aml=aml,
                 reward=reward,
+                total_up_votes=total_up_votes,
+                total_count=total_count,
             )
         )
     bot.send_message(
