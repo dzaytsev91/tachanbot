@@ -18,6 +18,7 @@ bot.set_my_commands(
         telebot.types.BotCommand("/topicid", "print topic id"),
         telebot.types.BotCommand("/chatid", "print chat id"),
         telebot.types.BotCommand("/statistic", "show memes statistic"),
+        telebot.types.BotCommand("/myaml", "show memes statistic"),
     ]
 )
 memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
@@ -82,6 +83,19 @@ def get_topic_id(message):
     return bot.send_message(
         message.chat.id,
         "here is topic id: {}".format(message.message_thread_id),
+        reply_to_message_id=message.id,
+        message_thread_id=message.message_thread_id,
+    )
+
+
+@bot.message_handler(commands=["myaml"])
+def get_my_aml(message):
+    seven_days_ago = datetime.now() - timedelta(days=7)
+    query = "SELECT ROUND(CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float), 3), SUM(up_votes), COUNT(*) FROM memes_posts WHERE created_at > ? AND user_id = ? ORDER BY CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float) DESC"
+    aml = conn.execute(query, (seven_days_ago, str(message.from_user.id))).fetchone()
+    return bot.send_message(
+        message.chat.id,
+        "Your aml is: {}".format(aml),
         reply_to_message_id=message.id,
         message_thread_id=message.message_thread_id,
     )
