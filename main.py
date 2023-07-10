@@ -1,6 +1,7 @@
 import os
 import random
 import sqlite3
+import time
 from datetime import datetime, timedelta
 
 import cachetools
@@ -8,6 +9,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import telebot
+from telebot.types import InputMediaPhoto
 
 matplotlib.use("agg")
 matplotlib.rc("figure", figsize=(20, 5))
@@ -23,6 +25,7 @@ bot.set_my_commands(
 )
 memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
 flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
+memes_chat_link_id = int(os.getenv("MEMES_CHAT_LINK_ID", 1))
 
 conn = sqlite3.connect("memes.db", check_same_thread=False)
 conn.execute(
@@ -112,7 +115,7 @@ def get_chat_id(message):
 
 
 @bot.message_handler(commands=["statistic"])
-def get_chat_id(message):
+def get_statistic(message):
     seven_days_ago = datetime.now() - timedelta(days=14)
     query = "select date(created_at), count(*) from memes_posts WHERE created_at > ? group by date(created_at) order by date(created_at);"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()
@@ -203,18 +206,19 @@ def proccess_photo_mem(message):
 
 @bot.message_handler(content_types=["new_chat_members"])
 def hello(message):
-    user_id = message.from_user.id
-    user_name = message.from_user.first_name
-    mention = "[" + user_name + "](tg://user?id=" + str(user_id) + ")"
-    bot_msg = "WelCUM CUMрад, {}".format(mention)
-    bot.send_animation(
-        message.chat.id,
-        animation="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWEwY2MwY2Q0MTU2Mjg0OWZiNzk0NmY0ZDQ5MWNjMzczODI1YWFmZiZjdD1n/FeAs1kvsWP4OvWa9zt/giphy-downsized-large.gif",
-        caption=bot_msg,
-        reply_to_message_id=message.id,
-        message_thread_id=message.message_thread_id,
-        parse_mode="Markdown",
-    )
+    for new_user in message.new_chat_members:
+        user_id = new_user.id
+        user_name = new_user.first_name
+        mention = "[" + user_name + "](tg://user?id=" + str(user_id) + ")"
+        bot_msg = "WelCUM CUMрад, {}".format(mention)
+        bot.send_animation(
+            message.chat.id,
+            animation="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWEwY2MwY2Q0MTU2Mjg0OWZiNzk0NmY0ZDQ5MWNjMzczODI1YWFmZiZjdD1n/FeAs1kvsWP4OvWa9zt/giphy-downsized-large.gif",
+            caption=bot_msg,
+            reply_to_message_id=message.id,
+            message_thread_id=message.message_thread_id,
+            parse_mode="Markdown",
+        )
 
 
 @bot.message_handler(content_types=["left_chat_member"])
