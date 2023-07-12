@@ -20,7 +20,7 @@ def main():
     for row in rows:
         user_id, username = row
         msg.append(
-            "[{username}](tg://user?id={user_id}))".format(
+            "[{username}](tg://user?id={user_id}) - user_id: {user_id}".format(
                 username=username,
                 user_id=user_id,
             )
