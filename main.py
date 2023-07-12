@@ -1,7 +1,6 @@
 import os
 import random
 import sqlite3
-import time
 from datetime import datetime, timedelta
 
 import cachetools
@@ -9,7 +8,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import telebot
-from telebot.types import InputMediaPhoto
 
 matplotlib.use("agg")
 matplotlib.rc("figure", figsize=(20, 5))
@@ -33,6 +31,9 @@ conn.execute(
 )
 conn.execute(
     "CREATE TABLE IF NOT EXISTS memes_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int, username string, old_hat_votes int);"
+)
+conn.execute(
+    "CREATE TABLE IF NOT EXISTS user_messages (username string, message_id int, message_thread_id int, user_id int, created_at timestamp);"
 )
 
 
@@ -160,6 +161,18 @@ def get_statistic(message):
     ]
 )
 def send_rand_photo(message):
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO user_messages (username, message_id, message_thread_id, user_id, created_at) VALUES(?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
+        (
+            message.from_user.first_name,
+            message.id,
+            message.message_thread_id,
+            message.from_user.id,
+            datetime.now(),
+        ),
+    )
+    conn.commit()
     if message.message_thread_id != memes_thread_id:
         return
     bot.forward_message(
