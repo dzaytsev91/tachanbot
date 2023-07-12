@@ -16,7 +16,7 @@ def main():
     seven_days_ago = datetime.now() - timedelta(days=7)
     query = "SELECT u.user_id, u.username FROM users u LEFT JOIN user_messages um ON um.user_id=u.user_id AND um.created_at > ? WHERE um.message_id is NULL AND u.active=1"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()
-    msg = ["Users who have 0 messages in the last 7 days\n"]
+    msg = ["Список вуаеристов\n"]
     for row in rows:
         user_id, username = row
         msg.append(
