@@ -45,29 +45,35 @@ conn.execute(
 )
 
 
-def generate_markup(meme_message_id: int, username: str, up_votes: int = 0,
-                    down_votes: int = 0, old_hat_votes: int = 0):
+def generate_markup(
+    meme_message_id: int,
+    username: str,
+    up_votes: int = 0,
+    down_votes: int = 0,
+    old_hat_votes: int = 0,
+):
     markup = types.InlineKeyboardMarkup()
     markup.add(
         types.InlineKeyboardButton(
             "👍 " + (str(up_votes) if up_votes else ""),
-            callback_data="vote_up|" + str(meme_message_id)
+            callback_data="vote_up|" + str(meme_message_id),
         ),
         types.InlineKeyboardButton(
             "👎 " + (str(down_votes) if down_votes else ""),
-            callback_data="vote_down|" + str(meme_message_id)
+            callback_data="vote_down|" + str(meme_message_id),
         ),
         types.InlineKeyboardButton(
             username + "🪗 " + (str(old_hat_votes) if old_hat_votes else ""),
-            callback_data="vote_old_hat|" + str(meme_message_id)
-        )
+            callback_data="vote_old_hat|" + str(meme_message_id),
+        ),
     )
 
     return markup
 
 
-def save_meme_to_db(message, flood_thread_message_id: int,
-                    memes_thread_message_id: int):
+def save_meme_to_db(
+    message, flood_thread_message_id: int, memes_thread_message_id: int
+):
     query = "INSERT INTO memes_posts_v2 (id, created_at, message_id, up_votes, down_votes, old_hat_votes, user_id, username, flood_thread_message_id, memes_thread_message_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
     cursor = conn.cursor()
     cursor.execute(
@@ -82,16 +88,16 @@ def save_meme_to_db(message, flood_thread_message_id: int,
             message.from_user.id,
             message.from_user.first_name,
             flood_thread_message_id,
-            memes_thread_message_id
+            memes_thread_message_id,
         ),
     )
     conn.commit()
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('vote'))
+@bot.callback_query_handler(func=lambda call: call.data.startswith("vote"))
 def vote_pressed(call: types.CallbackQuery):
-    action = call.data.split('|')[0]
-    meme_message_id = int(call.data.split('|')[1])
+    action = call.data.split("|")[0]
+    meme_message_id = int(call.data.split("|")[1])
 
     cursor = conn.cursor()
     query = "INSERT INTO user_votes (user_id, meme_id) VALUES(?, ?);"
@@ -105,26 +111,31 @@ def vote_pressed(call: types.CallbackQuery):
 
     query = "select up_votes, down_votes, old_hat_votes, username, flood_thread_message_id, memes_thread_message_id from memes_posts_v2 WHERE id = ?;"
     meme_stats = conn.execute(query, (meme_message_id,)).fetchall()
-    up_votes, down_votes, old_hat_votes, username, flood_thread_message_id, memes_thread_message_id = \
-        meme_stats[0] if len(
-            meme_stats) > 0 else (0, 0, 0, "", 0, 0)
+    (
+        up_votes,
+        down_votes,
+        old_hat_votes,
+        username,
+        flood_thread_message_id,
+        memes_thread_message_id,
+    ) = (
+        meme_stats[0] if len(meme_stats) > 0 else (0, 0, 0, "", 0, 0)
+    )
 
-    if action == 'vote_up':
+    if action == "vote_up":
         up_votes += 1
-    elif action == 'vote_down':
+    elif action == "vote_down":
         down_votes += 1
-    elif action == 'vote_old_hat':
+    elif action == "vote_old_hat":
         old_hat_votes += 1
 
     query = "UPDATE memes_posts_v2 SET up_votes=?, down_votes=?, old_hat_votes=? WHERE id = ?;"
-    conn.execute(
-        query, (
-            up_votes, down_votes, old_hat_votes, meme_message_id
-        ))
+    conn.execute(query, (up_votes, down_votes, old_hat_votes, meme_message_id))
     conn.commit()
 
-    markup = generate_markup(meme_message_id, username, up_votes, down_votes,
-                             old_hat_votes)
+    markup = generate_markup(
+        meme_message_id, username, up_votes, down_votes, old_hat_votes
+    )
 
     for message_id in [flood_thread_message_id, memes_thread_message_id]:
         bot.edit_message_caption(
@@ -149,8 +160,7 @@ def get_topic_id(message):
 def get_my_aml(message):
     seven_days_ago = datetime.now() - timedelta(days=7)
     query = "SELECT ROUND(CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float), 3), SUM(up_votes), COUNT(*) FROM memes_posts_v2 WHERE created_at > ? AND user_id = ? ORDER BY CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float) DESC"
-    aml = conn.execute(query,
-                       (seven_days_ago, str(message.from_user.id))).fetchone()
+    aml = conn.execute(query, (seven_days_ago, str(message.from_user.id))).fetchone()
     return bot.send_message(
         message.chat.id,
         "Your aml is: {}".format(aml),
@@ -230,11 +240,11 @@ def handle_message(message):
         return
 
     if (
-            message.text
-            or message.sticker
-            or message.voice
-            or message.location
-            or message.contact
+        message.text
+        or message.sticker
+        or message.voice
+        or message.location
+        or message.contact
     ):
         bot.delete_message(message.chat.id, message.id)
     else:
@@ -258,9 +268,7 @@ def handle_message(message):
         )
 
         save_meme_to_db(
-            message,
-            flood_thread_message.message_id,
-            memes_thread_message.message_id
+            message, flood_thread_message.message_id, memes_thread_message.message_id
         )
         bot.delete_message(message.chat.id, message.id)
 
