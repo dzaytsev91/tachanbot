@@ -9,7 +9,7 @@ memes_chat_id = int(os.getenv("MEMES_CHAT_ID"))
 flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
 chat_creator = 43529628
-
+minimum_memes_count = 5
 conn = sqlite3.connect("memes.db", check_same_thread=False)
 
 
@@ -25,7 +25,7 @@ def main():
     for row in rows:
         user_id, username, aml, total_up_votes, total_count = row
         reward = "🤡"
-        if stack and total_count > 10:
+        if stack and total_count > minimum_memes_count:
             reward = stack.pop()
             if not gold_user_id and not gold_username:
                 gold_username = username
@@ -38,7 +38,7 @@ def main():
             total_up_votes=total_up_votes,
             total_count=total_count,
         )
-        if total_count <= 10:
+        if total_count <= minimum_memes_count:
             low_memes_count.append(message)
         else:
             msg.append(message)
