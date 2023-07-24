@@ -30,6 +30,31 @@ def main():
             if not gold_user_id and not gold_username:
                 gold_username = username
                 gold_user_id = user_id
+            try:
+                user_data = bot.get_chat_member(memes_chat_id, user_id)
+                if user_data.status != "administrator":
+                    bot.promote_chat_member(
+                        memes_chat_id,
+                        user_id,
+                        can_post_messages=True,
+                        can_invite_users=True,
+                        can_pin_messages=True,
+                        can_manage_chat=True,
+                        can_manage_video_chats=True,
+                        can_manage_voice_chats=True,
+                        can_manage_topics=True,
+                    )
+                    bot.set_chat_administrator_custom_title(
+                        memes_chat_id, user_id, "дух"
+                    )
+                    bot.send_message(
+                        memes_chat_id,
+                        "Чествуем новых админов! [{}](tg://user?id={})".format(
+                            username, user_id
+                        ),
+                    )
+            except Exception as err:
+                print(err)
         message = "[{username}](tg://user?id={user_id}) - {aml} - {reward} (total up votes {total_up_votes}, total memes count {total_count})".format(
             username=username,
             user_id=user_id,
