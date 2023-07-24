@@ -250,18 +250,19 @@ def handle_message(message):
     else:
         markup = generate_markup(message.id, message.from_user.first_name)
 
-        flood_thread_message = bot.copy_message(
-            chat_id=message.chat.id,
-            from_chat_id=message.chat.id,
-            message_thread_id=flood_thread_id,
-            message_id=message.id,
-            disable_notification=True,
-            reply_markup=markup,
-        )
         memes_thread_message = bot.copy_message(
             chat_id=message.chat.id,
             from_chat_id=message.chat.id,
             message_thread_id=memes_thread_id,
+            message_id=message.id,
+            disable_notification=True,
+            reply_markup=markup,
+        )
+
+        flood_thread_message = bot.copy_message(
+            chat_id=message.chat.id,
+            from_chat_id=message.chat.id,
+            message_thread_id=flood_thread_id,
             message_id=message.id,
             disable_notification=True,
             reply_markup=markup,
