@@ -1,13 +1,16 @@
+import json
 import os
 import random
 import sqlite3
 from datetime import datetime, timedelta
+from sqlite3 import IntegrityError
 
 import cachetools
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import telebot
+from telebot import types
 
 matplotlib.use("agg")
 matplotlib.rc("figure", figsize=(20, 5))
@@ -25,9 +28,11 @@ memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
 flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_chat_link_id = int(os.getenv("MEMES_CHAT_LINK_ID", 1))
 
+all_threads_ids = [memes_thread_id, flood_thread_id]
+
 conn = sqlite3.connect("memes.db", check_same_thread=False)
 conn.execute(
-    "CREATE TABLE IF NOT EXISTS memes_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int, username string, old_hat_votes int);"
+    "CREATE TABLE IF NOT EXISTS memes_posts_v2 (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int, username string, old_hat_votes int, flood_thread_message_id int, memes_thread_message_id int);"
 )
 conn.execute(
     "CREATE TABLE IF NOT EXISTS user_messages (user_id int, message_id int, message_thread_id int, created_at timestamp);"
@@ -35,41 +40,40 @@ conn.execute(
 conn.execute(
     "CREATE TABLE IF NOT EXISTS users (user_id int, username string, active bool, joined_date timestamp);"
 )
+conn.execute(
+    "CREATE TABLE IF NOT EXISTS user_votes (user_id int, meme_id int, constraint user_votes_pk unique (user_id, meme_id));"
+)
 
 
-def update_votes(data):
-    cursor = conn.cursor()
-    query = "INSERT INTO memes_posts (id, up_votes, down_votes, old_hat_votes) VALUES(?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET up_votes={up_votes}, down_votes={down_votes}, old_hat_votes={old_hat_votes};".format(
-        up_votes=data.options[0].voter_count,
-        down_votes=data.options[1].voter_count,
-        old_hat_votes=data.options[2].voter_count,
-    )
-    cursor.execute(
-        query,
-        (
-            data.id,
-            data.options[0].voter_count,
-            data.options[1].voter_count,
-            data.options[2].voter_count,
+def generate_markup(meme_message_id: int, username: str, up_votes: int = 0,
+                    down_votes: int = 0, old_hat_votes: int = 0):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton(
+            "👍 " + (str(up_votes) if up_votes else ""),
+            callback_data="vote_up|" + str(meme_message_id)
         ),
+        types.InlineKeyboardButton(
+            "👎 " + (str(down_votes) if down_votes else ""),
+            callback_data="vote_down|" + str(meme_message_id)
+        ),
+        types.InlineKeyboardButton(
+            username + "🪗 " + (str(old_hat_votes) if old_hat_votes else ""),
+            callback_data="vote_old_hat|" + str(meme_message_id)
+        )
     )
-    conn.commit()
+
+    return markup
 
 
-@bot.poll_handler(update_votes)
-def create_pool(message):
-    poll_data = bot.send_poll(
-        message.chat.id,
-        " ",
-        ["👍", "👎", "🪗"],
-        message_thread_id=message.message_thread_id,
-    )
-    query = "INSERT INTO memes_posts (id, created_at, message_id, up_votes, down_votes, old_hat_votes, user_id, username) VALUES(?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
+def save_meme_to_db(message, flood_thread_message_id: int,
+                    memes_thread_message_id: int):
+    query = "INSERT INTO memes_posts_v2 (id, created_at, message_id, up_votes, down_votes, old_hat_votes, user_id, username, flood_thread_message_id, memes_thread_message_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
     cursor = conn.cursor()
     cursor.execute(
         query,
         (
-            poll_data.poll.id,
+            message.id,
             datetime.now(),
             message.id,
             0,
@@ -77,9 +81,58 @@ def create_pool(message):
             0,
             message.from_user.id,
             message.from_user.first_name,
+            flood_thread_message_id,
+            memes_thread_message_id
         ),
     )
     conn.commit()
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('vote'))
+def vote_pressed(call: types.CallbackQuery):
+    action = call.data.split('|')[0]
+    meme_message_id = int(call.data.split('|')[1])
+
+    cursor = conn.cursor()
+    query = "INSERT INTO user_votes (user_id, meme_id) VALUES(?, ?);"
+
+    try:
+        cursor.execute(query, (call.from_user.id, meme_message_id))
+    except IntegrityError:
+        conn.commit()
+        # send dick todo
+        return
+
+    query = "select up_votes, down_votes, old_hat_votes, username, flood_thread_message_id, memes_thread_message_id from memes_posts_v2 WHERE id = ?;"
+    meme_stats = conn.execute(query, (meme_message_id,)).fetchall()
+    up_votes, down_votes, old_hat_votes, username, flood_thread_message_id, memes_thread_message_id = \
+        meme_stats[0] if len(
+            meme_stats) > 0 else (0, 0, 0, "", 0, 0)
+
+    if action == 'vote_up':
+        up_votes += 1
+    elif action == 'vote_down':
+        down_votes += 1
+    elif action == 'vote_old_hat':
+        old_hat_votes += 1
+
+    query = "UPDATE memes_posts_v2 SET up_votes=?, down_votes=?, old_hat_votes=? WHERE id = ?;"
+    conn.execute(
+        query, (
+            up_votes, down_votes, old_hat_votes, meme_message_id
+        ))
+    conn.commit()
+
+    markup = generate_markup(meme_message_id, username, up_votes, down_votes,
+                             old_hat_votes)
+
+    for message_id in [flood_thread_message_id, memes_thread_message_id]:
+        bot.edit_message_caption(
+            caption=call.message.caption or " ",
+            chat_id=call.message.chat.id,
+            message_id=message_id,
+            reply_markup=markup,
+        )
 
 
 @bot.message_handler(commands=["topicid"])
@@ -95,8 +148,9 @@ def get_topic_id(message):
 @bot.message_handler(commands=["myaml"])
 def get_my_aml(message):
     seven_days_ago = datetime.now() - timedelta(days=7)
-    query = "SELECT ROUND(CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float), 3), SUM(up_votes), COUNT(*) FROM memes_posts WHERE created_at > ? AND user_id = ? ORDER BY CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float) DESC"
-    aml = conn.execute(query, (seven_days_ago, str(message.from_user.id))).fetchone()
+    query = "SELECT ROUND(CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float), 3), SUM(up_votes), COUNT(*) FROM memes_posts_v2 WHERE created_at > ? AND user_id = ? ORDER BY CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float) DESC"
+    aml = conn.execute(query,
+                       (seven_days_ago, str(message.from_user.id))).fetchone()
     return bot.send_message(
         message.chat.id,
         "Your aml is: {}".format(aml),
@@ -118,7 +172,7 @@ def get_chat_id(message):
 @bot.message_handler(commands=["statistic"])
 def get_statistic(message):
     seven_days_ago = datetime.now() - timedelta(days=14)
-    query = "select date(created_at), count(*) from memes_posts WHERE created_at > ? group by date(created_at) order by date(created_at);"
+    query = "select date(created_at), count(*) from memes_posts_v2 WHERE created_at > ? group by date(created_at) order by date(created_at);"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()
     date_time = []
     data = []
@@ -174,28 +228,41 @@ def handle_message(message):
     conn.commit()
     if message.message_thread_id != memes_thread_id:
         return
-    bot.forward_message(
-        chat_id=message.chat.id,
-        from_chat_id=message.chat.id,
-        message_thread_id=flood_thread_id,
-        message_id=message.id,
-        disable_notification=True,
-    )
+
     if (
-        message.text
-        or message.sticker
-        or message.voice
-        or message.location
-        or message.contact
+            message.text
+            or message.sticker
+            or message.voice
+            or message.location
+            or message.contact
     ):
         bot.delete_message(message.chat.id, message.id)
     else:
-        if message.media_group_id:
-            if not ttl_cache.get(message.media_group_id):
-                ttl_cache[message.media_group_id] = 1
-                create_pool(message)
-        else:
-            create_pool(message)
+        markup = generate_markup(message.id, message.from_user.first_name)
+
+        flood_thread_message = bot.copy_message(
+            chat_id=message.chat.id,
+            from_chat_id=message.chat.id,
+            message_thread_id=flood_thread_id,
+            message_id=message.id,
+            disable_notification=True,
+            reply_markup=markup,
+        )
+        memes_thread_message = bot.copy_message(
+            chat_id=message.chat.id,
+            from_chat_id=message.chat.id,
+            message_thread_id=memes_thread_id,
+            message_id=message.id,
+            disable_notification=True,
+            reply_markup=markup,
+        )
+
+        save_meme_to_db(
+            message,
+            flood_thread_message.message_id,
+            memes_thread_message.message_id
+        )
+        bot.delete_message(message.chat.id, message.id)
 
 
 @bot.message_handler(content_types=["new_chat_members"])

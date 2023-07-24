@@ -14,7 +14,7 @@ conn = sqlite3.connect("memes.db", check_same_thread=False)
 
 def main():
     seven_days_ago = datetime.now() - timedelta(days=7)
-    query = "SELECT user_id, MAX(username), count(*) FROM memes_posts WHERE created_at > ? GROUP BY user_id ORDER BY 3 DESC, 3 DESC LIMIT 3"
+    query = "SELECT user_id, MAX(username), count(*) FROM memes_posts_v2 WHERE created_at > ? GROUP BY user_id ORDER BY 3 DESC, 3 DESC LIMIT 3"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()
     msg = ["Количество сброшенных мемов\n"]
     stack = ["🥉", "🥈", "🥇"]
