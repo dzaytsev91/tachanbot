@@ -106,7 +106,9 @@ def vote_pressed(call: types.CallbackQuery):
         cursor.execute(query, (call.from_user.id, meme_message_id))
     except IntegrityError:
         conn.commit()
-        # send dick todo
+        bot.answer_callback_query(
+            call.id, "Иди другие мемы оценивай, " + call.from_user.first_name
+        )
         return
 
     query = "select up_votes, down_votes, old_hat_votes, username, flood_thread_message_id, memes_thread_message_id from memes_posts_v2 WHERE id = ?;"
