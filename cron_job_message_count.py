@@ -19,6 +19,9 @@ def main():
     msg = ["Список вуаеристов\n"]
     for row in rows:
         user_id, username = row
+        user_data = bot.get_chat_member(memes_chat_id, user_id)
+        if user_data.status == "administrator":
+            continue
         msg.append(
             "[{username}](tg://user?id={user_id}) {user_id}".format(
                 username=username,
