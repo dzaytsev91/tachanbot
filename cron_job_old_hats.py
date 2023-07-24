@@ -14,7 +14,7 @@ conn = sqlite3.connect("memes.db", check_same_thread=False)
 
 def main():
     seven_days_ago = datetime.now() - timedelta(days=7)
-    query = "SELECT user_id, MAX(username), SUM(old_hat_votes) FROM memes_posts WHERE created_at > ? GROUP BY user_id ORDER BY SUM(old_hat_votes) DESC LIMIT 1"
+    query = "SELECT user_id, MAX(username), SUM(old_hat_votes) FROM memes_posts_v2 WHERE created_at > ? GROUP BY user_id ORDER BY SUM(old_hat_votes) DESC LIMIT 1"
     row = conn.execute(query, (seven_days_ago,)).fetchone()
     user_id, username, old_hat_votes = row
     msg = (

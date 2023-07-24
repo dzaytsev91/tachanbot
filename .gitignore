@@ -131,3 +131,6 @@ dmypy.json
 memes.db
 creds_dev.env
 creds_prod.env
+main-dev.py
+test.png
+docker-compose.yml
