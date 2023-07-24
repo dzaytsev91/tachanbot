@@ -69,7 +69,7 @@ def main():
             msg.append(message)
 
     msg.append(
-        "\n\n\nПользователи у которых <10 мемов в неделю не учавствуют в рейтинге\n\n"
+        "\n\n\nПользователи у которых <5 мемов в неделю не учавствуют в рейтинге\n\n"
     )
     for message in low_memes_count:
         msg.append(message)
@@ -82,7 +82,6 @@ def main():
     )
     if not gold_user_id:
         return
-
     try:
         if gold_user_id == chat_creator:
             bot.send_message(
@@ -90,6 +89,7 @@ def main():
                 "Нельзя присвоить титул создателю чата, присвой себе сам [{}](tg://user?id={})".format(
                     gold_username, gold_user_id
                 ),
+                message_thread_id=flood_thread_id,
                 parse_mode="Markdown",
             )
         else:
@@ -103,6 +103,7 @@ def main():
         bot.send_message(
             memes_chat_id,
             "Опять криворукий разраб меня писал, ошибка",
+            message_thread_id=flood_thread_id,
             parse_mode="Markdown",
         )
     bot.send_message(
@@ -110,6 +111,7 @@ def main():
         "Почет и уважение новому босу данка на эту неделю! [{}](tg://user?id={})".format(
             gold_username, gold_user_id
         ),
+        message_thread_id=flood_thread_id,
         parse_mode="Markdown",
     )
 
