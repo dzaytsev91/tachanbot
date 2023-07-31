@@ -21,7 +21,7 @@ def main():
         bot.send_message(
             memes_chat_id,
             stack.pop(),
-            reply_to_message_id=row[4],
+            reply_to_message_id=row[9],
             message_thread_id=memes_thread_id,
         )
 
