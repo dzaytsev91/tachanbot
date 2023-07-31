@@ -63,7 +63,7 @@ def generate_markup(
             callback_data="vote_down|" + str(meme_message_id),
         ),
         types.InlineKeyboardButton(
-            "🪗 " + (str(old_hat_votes) if old_hat_votes else ""),
+            username + "🪗 " + (str(old_hat_votes) if old_hat_votes else ""),
             callback_data="vote_old_hat|" + str(meme_message_id),
         ),
     )
