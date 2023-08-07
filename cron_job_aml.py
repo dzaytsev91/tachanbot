@@ -69,7 +69,9 @@ def main():
             msg.append(message)
 
     msg.append(
-        "\n\n\nПользователи у которых <5 мемов в неделю не учавствуют в рейтинге\n\n"
+        "\n\n\nПользователи у которых <{} мемов в неделю не учавствуют в рейтинге\n\n".format(
+            minimum_memes_count
+        )
     )
     for message in low_memes_count:
         msg.append(message)
