@@ -27,6 +27,7 @@ bot.set_my_commands(
 memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
 flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_chat_link_id = int(os.getenv("MEMES_CHAT_LINK_ID", 1))
+channel_link_id = int(os.getenv("CHANNEL_LINK_ID", -1001871336301))
 
 all_threads_ids = [memes_thread_id, flood_thread_id]
 
@@ -265,6 +266,14 @@ def handle_message(message):
             chat_id=message.chat.id,
             from_chat_id=message.chat.id,
             message_thread_id=flood_thread_id,
+            message_id=message.id,
+            disable_notification=True,
+            reply_markup=markup,
+        )
+
+        channel_thread_message = bot.copy_message(
+            chat_id=channel_link_id,
+            from_chat_id=message.chat.id,
             message_id=message.id,
             disable_notification=True,
             reply_markup=markup,
