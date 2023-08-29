@@ -26,7 +26,7 @@ bot.set_my_commands(
 )
 memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
 flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
-memes_chat_link_id = int(os.getenv("MEMES_CHAT_LINK_ID", 1))
+memes_chat_link_id = int(os.getenv("MEMES_CHAT_ID", 1))
 channel_chat_id = int(os.getenv("CHANNEL_CHAT_ID", -1001871336301))
 
 all_threads_ids = [memes_thread_id, flood_thread_id]
