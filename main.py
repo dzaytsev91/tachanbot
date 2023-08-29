@@ -27,13 +27,13 @@ bot.set_my_commands(
 memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
 flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_chat_link_id = int(os.getenv("MEMES_CHAT_LINK_ID", 1))
-channel_link_id = int(os.getenv("CHANNEL_LINK_ID", -1001871336301))
+channel_chat_id = int(os.getenv("CHANNEL_CHAT_ID", -1001871336301))
 
 all_threads_ids = [memes_thread_id, flood_thread_id]
 
 conn = sqlite3.connect("memes.db", check_same_thread=False)
 conn.execute(
-    "CREATE TABLE IF NOT EXISTS memes_posts_v2 (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int, username string, old_hat_votes int, flood_thread_message_id int, memes_thread_message_id int);"
+    "CREATE TABLE IF NOT EXISTS memes_posts_v2 (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int, username string, old_hat_votes int, flood_thread_message_id int, memes_thread_message_id int, channel_message_id int);"
 )
 conn.execute(
     "CREATE TABLE IF NOT EXISTS user_messages (user_id int, message_id int, message_thread_id int, created_at timestamp);"
@@ -73,9 +73,12 @@ def generate_markup(
 
 
 def save_meme_to_db(
-    message, flood_thread_message_id: int, memes_thread_message_id: int
+    message,
+    flood_thread_message_id: int,
+    memes_thread_message_id: int,
+    channel_message_id: int,
 ):
-    query = "INSERT INTO memes_posts_v2 (id, created_at, message_id, up_votes, down_votes, old_hat_votes, user_id, username, flood_thread_message_id, memes_thread_message_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
+    query = "INSERT INTO memes_posts_v2 (id, created_at, message_id, up_votes, down_votes, old_hat_votes, user_id, username, flood_thread_message_id, memes_thread_message_id, channel_message_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
     cursor = conn.cursor()
     cursor.execute(
         query,
@@ -90,6 +93,7 @@ def save_meme_to_db(
             message.from_user.first_name,
             flood_thread_message_id,
             memes_thread_message_id,
+            channel_message_id,
         ),
     )
     conn.commit()
@@ -112,7 +116,7 @@ def vote_pressed(call: types.CallbackQuery):
         )
         return
 
-    query = "select up_votes, down_votes, old_hat_votes, username, flood_thread_message_id, memes_thread_message_id from memes_posts_v2 WHERE id = ?;"
+    query = "select up_votes, down_votes, old_hat_votes, username, flood_thread_message_id, memes_thread_message_id, channel_message_id from memes_posts_v2 WHERE id = ?;"
     meme_stats = conn.execute(query, (meme_message_id,)).fetchall()
     (
         up_votes,
@@ -121,8 +125,9 @@ def vote_pressed(call: types.CallbackQuery):
         username,
         flood_thread_message_id,
         memes_thread_message_id,
+        channel_message_id,
     ) = (
-        meme_stats[0] if len(meme_stats) > 0 else (0, 0, 0, "", 0, 0)
+        meme_stats[0] if len(meme_stats) > 0 else (0, 0, 0, "", 0, 0, 0)
     )
 
     if action == "vote_up":
@@ -143,10 +148,16 @@ def vote_pressed(call: types.CallbackQuery):
     for message_id in [flood_thread_message_id, memes_thread_message_id]:
         bot.edit_message_caption(
             caption=call.message.caption or " ",
-            chat_id=call.message.chat.id,
+            chat_id=memes_chat_link_id,
             message_id=message_id,
             reply_markup=markup,
         )
+    bot.edit_message_caption(
+        caption=call.message.caption or " ",
+        chat_id=channel_chat_id,
+        message_id=channel_message_id,
+        reply_markup=markup,
+    )
 
 
 @bot.message_handler(commands=["topicid"])
@@ -271,8 +282,8 @@ def handle_message(message):
             reply_markup=markup,
         )
 
-        channel_thread_message = bot.copy_message(
-            chat_id=channel_link_id,
+        channel_message = bot.copy_message(
+            chat_id=channel_chat_id,
             from_chat_id=message.chat.id,
             message_id=message.id,
             disable_notification=True,
@@ -280,7 +291,10 @@ def handle_message(message):
         )
 
         save_meme_to_db(
-            message, flood_thread_message.message_id, memes_thread_message.message_id
+            message,
+            flood_thread_message.message_id,
+            memes_thread_message.message_id,
+            channel_message.message_id,
         )
         bot.delete_message(message.chat.id, message.id)
 
