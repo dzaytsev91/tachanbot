@@ -98,7 +98,7 @@ def main():
             bot.set_chat_administrator_custom_title(
                 chat_id=memes_chat_id,
                 user_id=gold_user_id,
-                custom_title="Dank boss",
+                custom_title="Ильнур недели",
             )
     except Exception as err:
         print(err)
@@ -110,7 +110,7 @@ def main():
         )
     bot.send_message(
         memes_chat_id,
-        "Почет и уважение новому босу данка на эту неделю! [{}](tg://user?id={})".format(
+        "Почет и уважение новому Ильнуру на эту неделю! [{}](tg://user?id={})".format(
             gold_username, gold_user_id
         ),
         message_thread_id=flood_thread_id,
