@@ -228,7 +228,7 @@ def get_statistic(message):
 
 def start_shooting():
     two_weeks_ago = datetime.now() - timedelta(days=14)
-    query = "SELECT u.user_id, u.username FROM users u LEFT JOIN user_messages um ON um.user_id=u.user_id AND um.created_at > ? AND u.created_at > ? WHERE um.message_id is NULL AND u.active=1"
+    query = "SELECT u.user_id, u.username FROM users u LEFT JOIN user_messages um ON um.user_id=u.user_id AND um.joined_date > ? AND u.created_at > ? WHERE um.message_id is NULL AND u.active=1"
     rows = conn.execute(query, (two_weeks_ago, two_weeks_ago)).fetchall()
     msg = ["Список вуаеристов на расстрел\n"]
     users_to_shoot = []
