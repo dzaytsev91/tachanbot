@@ -2,6 +2,7 @@ import json
 import os
 import random
 import sqlite3
+import time
 from datetime import datetime, timedelta
 from sqlite3 import IntegrityError
 
@@ -28,6 +29,9 @@ memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
 flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_chat_link_id = int(os.getenv("MEMES_CHAT_ID", 1))
 channel_chat_id = int(os.getenv("CHANNEL_CHAT_ID", -1001871336301))
+
+chat_creator = 43529628
+vice_chat_creator = 163181560
 
 all_threads_ids = [memes_thread_id, flood_thread_id]
 
@@ -223,6 +227,55 @@ def get_statistic(message):
     )
 
 
+def start_shooting():
+    seven_days_ago = datetime.now() - timedelta(days=14)
+    query = "SELECT u.user_id, u.username FROM users u LEFT JOIN user_messages um ON um.user_id=u.user_id AND um.created_at > ? WHERE um.message_id is NULL AND u.active=1"
+    rows = conn.execute(query, (seven_days_ago,)).fetchall()
+    msg = ["Список вуаеристов на расстрел\n"]
+    users_to_shoot = []
+    for row in rows:
+        user_id, username = row
+        user_data = bot.get_chat_member(memes_chat_link_id, user_id)
+        if user_data.status == "administrator":
+            continue
+        msg.append(
+            "{username} - {user_id}".format(
+                username=username,
+                user_id=user_id,
+            )
+        )
+        users_to_shoot.append([username, user_id])
+    bot.send_message(
+        memes_chat_link_id,
+        "\n".join(msg),
+        message_thread_id=flood_thread_id,
+        parse_mode="Markdown",
+    )
+    time.sleep(1)
+
+    bot.send_message(
+        memes_chat_link_id,
+        "Заряжаем пистолет 🔫",
+        message_thread_id=flood_thread_id,
+        parse_mode="Markdown",
+    )
+    target_to_shot = random.choice(users_to_shoot)
+    time.sleep(1)
+    msg = "Кара пала на - [{username}](tg://user?id={user_id}) {user_id}".format(
+        username=target_to_shot[0], user_id=target_to_shot[1]
+    )
+    bot.send_message(
+        memes_chat_link_id,
+        msg,
+        message_thread_id=flood_thread_id,
+        parse_mode="Markdown",
+    )
+    bot.ban_chat_member(
+        memes_chat_link_id,
+        target_to_shot[1],
+    )
+
+
 @bot.message_handler(
     content_types=[
         "text",
@@ -239,6 +292,13 @@ def get_statistic(message):
     ]
 )
 def handle_message(message):
+    if (
+        message.text
+        and message.from_user.id in (chat_creator, vice_chat_creator)
+        and "варфоломеевскую ночь" in message.text
+    ):
+        start_shooting()
+        return
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO user_messages (user_id, message_id, message_thread_id, created_at) VALUES(?, ?, ?, ?) ON CONFLICT DO NOTHING",
