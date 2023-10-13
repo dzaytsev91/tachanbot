@@ -30,8 +30,7 @@ flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_chat_link_id = int(os.getenv("MEMES_CHAT_ID", 1))
 channel_chat_id = int(os.getenv("CHANNEL_CHAT_ID", -1001871336301))
 
-chat_creator = 43529628
-vice_chat_creator = 163181560
+still_worthy = [43529628, 163181560, 678126582, 211291464]
 
 all_threads_ids = [memes_thread_id, flood_thread_id]
 
@@ -228,9 +227,9 @@ def get_statistic(message):
 
 
 def start_shooting():
-    seven_days_ago = datetime.now() - timedelta(days=14)
-    query = "SELECT u.user_id, u.username FROM users u LEFT JOIN user_messages um ON um.user_id=u.user_id AND um.created_at > ? WHERE um.message_id is NULL AND u.active=1"
-    rows = conn.execute(query, (seven_days_ago,)).fetchall()
+    two_weeks_ago = datetime.now() - timedelta(days=14)
+    query = "SELECT u.user_id, u.username FROM users u LEFT JOIN user_messages um ON um.user_id=u.user_id AND um.created_at > ? AND u.created_at > ? WHERE um.message_id is NULL AND u.active=1"
+    rows = conn.execute(query, (two_weeks_ago, two_weeks_ago)).fetchall()
     msg = ["Список вуаеристов на расстрел\n"]
     users_to_shoot = []
     for row in rows:
@@ -245,6 +244,15 @@ def start_shooting():
             )
         )
         users_to_shoot.append([username, user_id])
+    if len(users_to_shoot) < 1:
+        bot.send_message(
+            memes_chat_link_id,
+            "Всех неверных уже расстреляли",
+            message_thread_id=flood_thread_id,
+            parse_mode="Markdown",
+        )
+        return
+
     bot.send_message(
         memes_chat_link_id,
         "\n".join(msg),
@@ -274,6 +282,12 @@ def start_shooting():
         memes_chat_link_id,
         target_to_shot[1],
     )
+    cursor = conn.cursor()
+    cursor.execute(
+        "DELETE FROM users WHERE user_id = ?",
+        (target_to_shot[1],),
+    )
+    conn.commit()
 
 
 @bot.message_handler(
@@ -294,7 +308,7 @@ def start_shooting():
 def handle_message(message):
     if (
         message.text
-        and message.from_user.id in (chat_creator, vice_chat_creator)
+        and message.from_user.id in still_worthy
         and "варфоломеевскую ночь" in message.text
     ):
         start_shooting()
