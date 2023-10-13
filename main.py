@@ -30,7 +30,7 @@ flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_chat_link_id = int(os.getenv("MEMES_CHAT_ID", 1))
 channel_chat_id = int(os.getenv("CHANNEL_CHAT_ID", -1001871336301))
 
-still_worthy = [43529628, 163181560, 678126582, 211291464]
+still_worthy = [43529628, 163181560, 678126582, 211291464, 374984530]
 
 all_threads_ids = [memes_thread_id, flood_thread_id]
 
@@ -230,6 +230,7 @@ def start_shooting():
     two_weeks_ago = datetime.now() - timedelta(days=14)
     query = "SELECT u.user_id, u.username FROM users u LEFT JOIN user_messages um ON um.user_id=u.user_id AND um.created_at > ? AND u.joined_date < ? WHERE um.message_id is NULL AND u.active=1"
     rows = conn.execute(query, (two_weeks_ago, two_weeks_ago)).fetchall()
+
     msg = ["Список вуаеристов на расстрел\n"]
     users_to_shoot = []
     for row in rows:
