@@ -312,7 +312,7 @@ def handle_message(message):
         and message.from_user.id in still_worthy
         and "варфоломеевскую ночь" in message.text
     ):
-        start_shooting()
+        # start_shooting()
         return
     cursor = conn.cursor()
     cursor.execute(
