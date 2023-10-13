@@ -29,6 +29,7 @@ memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
 flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_chat_link_id = int(os.getenv("MEMES_CHAT_ID", 1))
 channel_chat_id = int(os.getenv("CHANNEL_CHAT_ID", -1001871336301))
+music_thread_id = int(os.getenv("MUSIC_THREAD_ID", 1))
 
 still_worthy = [43529628, 163181560, 678126582, 211291464, 374984530]
 
@@ -299,6 +300,11 @@ def start_shooting(message):
         conn.commit()
 
 
+def handle_audio_messages(message):
+    if not message.audio:
+        bot.delete_message(message.chat.id, message.id)
+
+
 @bot.message_handler(
     content_types=[
         "text",
@@ -333,6 +339,11 @@ def handle_message(message):
         ),
     )
     conn.commit()
+
+    if message.message_thread_id == music_thread_id:
+        handle_audio_messages(message)
+        return
+
     if message.message_thread_id != memes_thread_id:
         return
 
