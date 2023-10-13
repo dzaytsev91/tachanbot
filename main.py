@@ -226,11 +226,11 @@ def get_statistic(message):
     )
 
 
-def start_shooting():
+def start_shooting(message):
+    test_mode = "тест" in message.text.lower()
     two_weeks_ago = datetime.now() - timedelta(days=14)
-    query = "SELECT u.user_id, u.username FROM users u LEFT JOIN user_messages um ON um.user_id=u.user_id AND um.created_at > ? AND u.joined_date < ? WHERE um.message_id is NULL AND u.active=1"
+    query = "SELECT u.user_id, u.username from user_messages um join users u ON u.user_id = um.user_id AND u.joined_date < ? group by um.user_id having  max(created_at) < ?;"
     rows = conn.execute(query, (two_weeks_ago, two_weeks_ago)).fetchall()
-
     msg = ["Список вуаеристов на расстрел\n"]
     users_to_shoot = []
     for row in rows:
@@ -249,7 +249,7 @@ def start_shooting():
         bot.send_message(
             memes_chat_link_id,
             "Всех неверных уже расстреляли",
-            message_thread_id=flood_thread_id,
+            message_thread_id=message.message_thread_id,
             parse_mode="Markdown",
         )
         return
@@ -257,7 +257,7 @@ def start_shooting():
     bot.send_message(
         memes_chat_link_id,
         "\n".join(msg),
-        message_thread_id=flood_thread_id,
+        message_thread_id=message.message_thread_id,
         parse_mode="Markdown",
     )
     time.sleep(1)
@@ -265,7 +265,7 @@ def start_shooting():
     bot.send_message(
         memes_chat_link_id,
         "Заряжаем пистолет 🔫",
-        message_thread_id=flood_thread_id,
+        message_thread_id=message.message_thread_id,
         parse_mode="Markdown",
     )
     target_to_shot = random.choice(users_to_shoot)
@@ -276,19 +276,27 @@ def start_shooting():
     bot.send_message(
         memes_chat_link_id,
         msg,
-        message_thread_id=flood_thread_id,
+        message_thread_id=message.message_thread_id,
         parse_mode="Markdown",
     )
-    bot.ban_chat_member(
-        memes_chat_link_id,
-        target_to_shot[1],
-    )
-    cursor = conn.cursor()
-    cursor.execute(
-        "DELETE FROM users WHERE user_id = ?",
-        (target_to_shot[1],),
-    )
-    conn.commit()
+    if test_mode:
+        bot.send_message(
+            memes_chat_link_id,
+            "Попался холостой патрон",
+            message_thread_id=message.message_thread_id,
+            parse_mode="Markdown",
+        )
+    else:
+        bot.ban_chat_member(
+            memes_chat_link_id,
+            target_to_shot[1],
+        )
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM users WHERE user_id = ?",
+            (target_to_shot[1],),
+        )
+        conn.commit()
 
 
 @bot.message_handler(
@@ -310,9 +318,9 @@ def handle_message(message):
     if (
         message.text
         and message.from_user.id in still_worthy
-        and "варфоломеевскую ночь" in message.text
+        and "варфоломеевскую ночь" in message.text.lower()
     ):
-        # start_shooting()
+        start_shooting(message)
         return
     cursor = conn.cursor()
     cursor.execute(
