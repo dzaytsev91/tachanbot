@@ -1,5 +1,6 @@
 import os
 import random
+import re
 import sqlite3
 import time
 from datetime import datetime, timedelta
@@ -29,8 +30,10 @@ memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
 flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_chat_link_id = int(os.getenv("MEMES_CHAT_ID", 1))
 channel_chat_id = int(os.getenv("CHANNEL_CHAT_ID", -1001871336301))
-music_thread_id = int(os.getenv("MUSIC_THREAD_ID", 1))
-yandex_music_token = os.getenv("YA_MUSIC_TOKEN", "")
+music_thread_id = int(os.getenv("MUSIC_THREAD_ID", 2))
+yandex_music_token = os.getenv(
+    "YA_MUSIC_TOKEN", "y0_AgAAAAABV1jOAAG8XgAAAADvHEafpmyLY-AySbKtyIXVIonozwCditI"
+)
 
 still_worthy = [43529628, 163181560, 678126582, 211291464, 374984530]
 
@@ -309,7 +312,10 @@ def handle_audio_messages(message):
         return
     elif message.text and "https://music.yandex.ru/" in message.text:
         try:
-            album_id, song_id = message.text.split("/album/")[1].split("/track/")
+            regx_pattern = r"\d+\.\d+|\d+"
+            matches = re.findall(regx_pattern, message.text)
+            song_id = matches[0]
+            album_id = matches[1]
         except Exception as err:
             bot.send_message(
                 message.chat.id,
