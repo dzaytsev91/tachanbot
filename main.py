@@ -310,7 +310,7 @@ def start_shooting(message):
 def handle_audio_messages(message):
     if message.audio:
         return
-    elif message.text and "https://music.yandex.ru/" in message.text:
+    elif message.text and message.text.startswith("https://music.yandex.ru/"):
         try:
             regx_pattern = r"\d+\.\d+|\d+"
             matches = re.findall(regx_pattern, message.text)
@@ -319,9 +319,10 @@ def handle_audio_messages(message):
         except Exception as err:
             bot.send_message(
                 message.chat.id,
-                text="error occurred - {}".format(err),
+                text="error occurred - {}\nmessage.text - {}".format(err, message.text),
                 message_thread_id=message.message_thread_id,
             )
+            bot.delete_message(message.chat.id, message.id)
             return
         track = client.tracks(["{}:{}".format(song_id, album_id)])[0]
         bot.delete_message(message.chat.id, message.id)
