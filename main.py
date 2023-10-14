@@ -1,4 +1,3 @@
-import json
 import os
 import random
 import sqlite3
@@ -12,6 +11,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import telebot
 from telebot import types
+from yandex_music import Client
 
 matplotlib.use("agg")
 matplotlib.rc("figure", figsize=(20, 5))
@@ -30,6 +30,7 @@ flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_chat_link_id = int(os.getenv("MEMES_CHAT_ID", 1))
 channel_chat_id = int(os.getenv("CHANNEL_CHAT_ID", -1001871336301))
 music_thread_id = int(os.getenv("MUSIC_THREAD_ID", 1))
+yandex_music_token = os.getenv("YA_MUSIC_TOKEN", "")
 
 still_worthy = [43529628, 163181560, 678126582, 211291464, 374984530]
 
@@ -48,6 +49,9 @@ conn.execute(
 conn.execute(
     "CREATE TABLE IF NOT EXISTS user_votes (user_id int, meme_id int, constraint user_votes_pk unique (user_id, meme_id));"
 )
+
+
+client = Client(yandex_music_token).init()
 
 
 def generate_markup(
@@ -294,15 +298,44 @@ def start_shooting(message):
         )
         cursor = conn.cursor()
         cursor.execute(
-            "DELETE FROM users WHERE user_id = ?",
+            "UPDATE users SET active=0 WHERE user_id=?",
             (target_to_shot[1],),
         )
         conn.commit()
 
 
 def handle_audio_messages(message):
-    if not message.audio:
+    if message.audio:
+        return
+    elif message.text and "https://music.yandex.ru/" in message.text:
+        try:
+            album_id, song_id = message.text.split("/album/")[1].split("/track/")
+        except Exception as err:
+            bot.send_message(
+                message.chat.id,
+                text="error occurred - {}".format(err),
+                message_thread_id=message.message_thread_id,
+            )
+            return
+        track = client.tracks(["{}:{}".format(song_id, album_id)])[0]
         bot.delete_message(message.chat.id, message.id)
+        temp_msg = bot.send_message(
+            message.chat.id,
+            text="Downloading song 🎶",
+            message_thread_id=message.message_thread_id,
+        )
+        song_name = "{} - {}.mp3".format(track.artists_name()[0], track.title)
+        track.download(song_name)
+        bot.delete_message(message.chat.id, temp_msg.id)
+        bot.send_audio(
+            message.chat.id,
+            audio=open(song_name, "rb"),
+            message_thread_id=message.message_thread_id,
+        )
+        os.remove(song_name)
+        return
+
+    bot.delete_message(message.chat.id, message.id)
 
 
 @bot.message_handler(
@@ -447,6 +480,7 @@ def goodbye(message):
         "UPDATE users SET active=0 WHERE user_id=?",
         (message.from_user.id,),
     )
+
     conn.commit()
     bot.send_message(
         message.chat.id,

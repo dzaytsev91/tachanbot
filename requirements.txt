@@ -2,3 +2,4 @@ pyTelegramBotAPI
 cachetools
 matplotlib
 pandas
+yandex-music
