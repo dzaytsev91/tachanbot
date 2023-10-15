@@ -317,7 +317,7 @@ def handler_fap_messages(message):
             disable_notification=True,
             has_spoiler=True,
         )
-    bot.delete_message(message.chat.id, message.id)
+        bot.delete_message(message.chat.id, message.id)
     return
 
 
