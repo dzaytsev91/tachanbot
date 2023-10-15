@@ -411,7 +411,7 @@ def handle_message(message):
         handle_audio_messages(message)
         return
 
-    if message.message_thread_id != fap_thread_id:
+    if message.message_thread_id == fap_thread_id:
         handler_fap_messages(message)
         return
 
