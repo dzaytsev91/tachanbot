@@ -310,18 +310,14 @@ def start_shooting(message):
 def handle_audio_messages(message):
     if message.audio:
         return
-    elif message.text and "https://music.yandex.ru/" in message.text:
+    elif message.text and message.text.startswith("https://music.yandex.ru/"):
         try:
             regx_pattern = r"\d+\.\d+|\d+"
             matches = re.findall(regx_pattern, message.text)
             song_id = matches[0]
             album_id = matches[1]
         except Exception as err:
-            bot.send_message(
-                message.chat.id,
-                text="error occurred - {}".format(err),
-                message_thread_id=message.message_thread_id,
-            )
+            bot.delete_message(message.chat.id, message.id)
             return
         track = client.tracks(["{}:{}".format(song_id, album_id)])[0]
         bot.delete_message(message.chat.id, message.id)
@@ -330,13 +326,24 @@ def handle_audio_messages(message):
             text="Downloading song 🎶",
             message_thread_id=message.message_thread_id,
         )
-        song_name = "{} - {}.mp3".format(track.artists_name()[0], track.title)
-        track.download(song_name)
+        song_name = "{} - {}.mp3 ()".format(track.artists_name()[0], track.title)
+        try:
+            track.download(song_name)
+        except Exception as err:
+            bot.delete_message(message.chat.id, temp_msg.id)
+            bot.delete_message(message.chat.id, message.id)
+            bot.send_message(
+                message.chat.id,
+                text="Ошибка при попытке скачивания - {}".format(err),
+                message_thread_id=message.message_thread_id,
+            )
+            return
         bot.delete_message(message.chat.id, temp_msg.id)
         bot.send_audio(
             message.chat.id,
             audio=open(song_name, "rb"),
             message_thread_id=message.message_thread_id,
+            caption=message.from_user.first_name,
         )
         os.remove(song_name)
         return
