@@ -31,6 +31,7 @@ flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_chat_link_id = int(os.getenv("MEMES_CHAT_ID", 1))
 channel_chat_id = int(os.getenv("CHANNEL_CHAT_ID", -1001871336301))
 music_thread_id = int(os.getenv("MUSIC_THREAD_ID", 2))
+fap_thread_id = int(os.getenv("FAP_THREAD_ID", 2))
 yandex_music_token = os.getenv(
     "YA_MUSIC_TOKEN", "y0_AgAAAAABV1jOAAG8XgAAAADvHEafpmyLY-AySbKtyIXVIonozwCditI"
 )
@@ -307,10 +308,30 @@ def start_shooting(message):
         conn.commit()
 
 
+def handler_fap_messages(message):
+    if message.photo:
+        bot.send_photo(
+            photo=message.photo[-1].file_id,
+            chat_id=message.chat.id,
+            message_thread_id=message.message_thread_id,
+            disable_notification=True,
+            has_spoiler=True,
+        )
+    bot.delete_message(message.chat.id, message.id)
+    return
+
+
 def handle_audio_messages(message):
     if message.audio:
         return
-    elif message.text and message.text.startswith("https://music.yandex.ru/"):
+    elif (
+        message.text
+        and message.text.startswith("https://music.yandex.ru/album")
+        and re.match(
+            r"^https?://[music.yandex.ru/album/]+(\d+)+[/track/]+(\d+)(?:[?#]\S*)?$",
+            message.text,
+        )
+    ):
         try:
             regx_pattern = r"\d+\.\d+|\d+"
             matches = re.findall(regx_pattern, message.text)
@@ -390,6 +411,10 @@ def handle_message(message):
         handle_audio_messages(message)
         return
 
+    if message.message_thread_id != fap_thread_id:
+        handler_fap_messages(message)
+        return
+
     if message.message_thread_id != memes_thread_id:
         return
 
@@ -464,6 +489,7 @@ def hello(message):
         7. Никаких ограничений на черность мемов тут нет, по ощущениям чем мем чернее тем лучше, лайтовые мемы стараемся не кидать\n
         8. Для смены статуса кому то можно писать мне с обоснованием почему)\n
         9. Так как тут своеобразная атмосфера и не все ее поймут. Можно инвайтить проверенных людей, если уверен(а) что им зайдёт, новеньким тут всегда рады\n
+        10. Не верь тому что напишет @Akosmatykh
         """
 
         instruction_message = "Привет {}!\n{}".format(mention, hello_text)
