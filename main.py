@@ -31,7 +31,6 @@ flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_chat_link_id = int(os.getenv("MEMES_CHAT_ID", 1))
 channel_chat_id = int(os.getenv("CHANNEL_CHAT_ID", -1001871336301))
 music_thread_id = int(os.getenv("MUSIC_THREAD_ID", 2))
-fap_thread_id = int(os.getenv("FAP_THREAD_ID", 2))
 yandex_music_token = os.getenv(
     "YA_MUSIC_TOKEN", "y0_AgAAAAABV1jOAAG8XgAAAADvHEafpmyLY-AySbKtyIXVIonozwCditI"
 )
@@ -308,19 +307,6 @@ def start_shooting(message):
         conn.commit()
 
 
-def handler_fap_messages(message):
-    if message.photo:
-        bot.send_photo(
-            photo=message.photo[-1].file_id,
-            chat_id=message.chat.id,
-            message_thread_id=message.message_thread_id,
-            disable_notification=True,
-            has_spoiler=True,
-        )
-        bot.delete_message(message.chat.id, message.id)
-    return
-
-
 def handle_audio_messages(message):
     if message.audio:
         return
@@ -409,10 +395,6 @@ def handle_message(message):
 
     if message.message_thread_id == music_thread_id:
         handle_audio_messages(message)
-        return
-
-    if message.message_thread_id == fap_thread_id:
-        handler_fap_messages(message)
         return
 
     if message.message_thread_id != memes_thread_id:
