@@ -2,4 +2,4 @@ pyTelegramBotAPI
 cachetools
 matplotlib
 pandas
-youtube_dl
+git+https://github.com/ytdl-org/youtube-dl.git@00ef748cc0e35ee60efd0f7a00e373ab8d1af86b
