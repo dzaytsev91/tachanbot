@@ -4,6 +4,7 @@ import re
 import sqlite3
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from sqlite3 import IntegrityError
 
 import cachetools
@@ -11,8 +12,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import telebot
+import youtube_dl
 from telebot import types
-from yandex_music import Client
 
 matplotlib.use("agg")
 matplotlib.rc("figure", figsize=(20, 5))
@@ -31,9 +32,6 @@ flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_chat_link_id = int(os.getenv("MEMES_CHAT_ID", 1))
 channel_chat_id = int(os.getenv("CHANNEL_CHAT_ID", -1001871336301))
 music_thread_id = int(os.getenv("MUSIC_THREAD_ID", 2))
-yandex_music_token = os.getenv(
-    "YA_MUSIC_TOKEN", "y0_AgAAAAABV1jOAAG8XgAAAADvHEafpmyLY-AySbKtyIXVIonozwCditI"
-)
 
 still_worthy = [43529628, 163181560, 678126582, 211291464, 374984530]
 
@@ -53,8 +51,18 @@ conn.execute(
     "CREATE TABLE IF NOT EXISTS user_votes (user_id int, meme_id int, constraint user_votes_pk unique (user_id, meme_id));"
 )
 
+ydl_opts = {
+    "format": "bestaudio/best",
+    "postprocessors": [
+        {
+            "key": "FFmpegExtractAudio",
+            "preferredcodec": "mp3",
+            "preferredquality": "192",
+        }
+    ],
+}
 
-client = Client(yandex_music_token).init()
+youtube_re = r"http(?:s?)://(?:www\.)?youtu(?:be\.com/watch\?v=|\.be/)([\w\-\_]*)(&(amp;)?‌​[\w\?‌​=]*)?"
 
 
 def generate_markup(
@@ -310,49 +318,27 @@ def start_shooting(message):
 def handle_audio_messages(message):
     if message.audio:
         return
-    elif (
-        message.text
-        and message.text.startswith("https://music.yandex.ru/album")
-        and re.match(
-            r"^https?://[music.yandex.ru/album/]+(\d+)+[/track/]+(\d+)(?:[?#]\S*)?$",
-            message.text,
-        )
-    ):
-        try:
-            regx_pattern = r"\d+\.\d+|\d+"
-            matches = re.findall(regx_pattern, message.text)
-            song_id = matches[0]
-            album_id = matches[1]
-        except Exception as err:
-            bot.delete_message(message.chat.id, message.id)
-            return
-        track = client.tracks(["{}:{}".format(song_id, album_id)])[0]
+    elif message.text and re.search(youtube_re, message.text):
+        youtube_link = re.search(youtube_re, message.text)[0]
         bot.delete_message(message.chat.id, message.id)
         temp_msg = bot.send_message(
             message.chat.id,
             text="Downloading song 🎶",
             message_thread_id=message.message_thread_id,
         )
-        song_name = "{} - {}.mp3 ()".format(track.artists_name()[0], track.title)
-        try:
-            track.download(song_name)
-        except Exception as err:
-            bot.delete_message(message.chat.id, temp_msg.id)
-            bot.delete_message(message.chat.id, message.id)
-            bot.send_message(
-                message.chat.id,
-                text="Ошибка при попытке скачивания - {}".format(err),
-                message_thread_id=message.message_thread_id,
-            )
-            return
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(youtube_link, download=True)
+            filename = ydl.prepare_filename(info)
+            new_filename = str(Path(filename).with_suffix(".mp3"))
+
         bot.delete_message(message.chat.id, temp_msg.id)
         bot.send_audio(
             message.chat.id,
-            audio=open(song_name, "rb"),
+            audio=open(new_filename, "rb"),
             message_thread_id=message.message_thread_id,
             caption=message.from_user.first_name,
         )
-        os.remove(song_name)
+        os.remove(new_filename)
         return
 
     bot.delete_message(message.chat.id, message.id)

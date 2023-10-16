@@ -2,4 +2,4 @@ pyTelegramBotAPI
 cachetools
 matplotlib
 pandas
-yandex-music
+git+https://github.com/ytdl-org/youtube-dl.git
