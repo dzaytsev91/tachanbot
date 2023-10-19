@@ -341,8 +341,6 @@ def handle_audio_messages(message):
         os.remove(new_filename)
         return
 
-    bot.delete_message(message.chat.id, message.id)
-
 
 @bot.message_handler(
     content_types=[
