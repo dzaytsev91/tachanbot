@@ -53,6 +53,7 @@ conn.execute(
 
 ydl_opts = {
     "format": "bestaudio/best",
+    "retries": 5,
     "postprocessors": [
         {
             "key": "FFmpegExtractAudio",
