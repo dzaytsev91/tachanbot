@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from sqlite3 import IntegrityError
 
-import cachetools
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -17,7 +16,6 @@ from telebot import types
 
 matplotlib.use("agg")
 matplotlib.rc("figure", figsize=(20, 5))
-ttl_cache = cachetools.TTLCache(maxsize=128, ttl=100)
 bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), skip_pending=True)
 bot.set_my_commands(
     [
@@ -146,9 +144,7 @@ def vote_pressed(call: types.CallbackQuery):
         flood_thread_message_id,
         memes_thread_message_id,
         channel_message_id,
-    ) = (
-        meme_stats[0] if len(meme_stats) > 0 else (0, 0, 0, "", 0, 0, 0)
-    )
+    ) = meme_stats[0] if len(meme_stats) > 0 else (0, 0, 0, "", 0, 0, 0)
 
     if action == "vote_up":
         up_votes += 1
@@ -193,7 +189,7 @@ def get_topic_id(message):
 @bot.message_handler(commands=["myaml"])
 def get_my_aml(message):
     seven_days_ago = datetime.now() - timedelta(days=7)
-    query = "SELECT ROUND(CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float), 3), SUM(up_votes), COUNT(*) FROM memes_posts_v2 WHERE created_at > ? AND user_id = ? ORDER BY CAST(SUM(up_votes) as float) / CAST(COUNT(*) as float) DESC"
+    query = "SELECT ROUND(CAST((SUM(up_votes) - SUM(down_votes) - SUM(old_hat_votes)) as float) / CAST(COUNT(*) as float), 3), COUNT(*) FROM memes_posts_v2 WHERE created_at > ? AND user_id = ? ORDER BY ROUND(CAST((SUM(up_votes) - SUM(down_votes) - SUM(old_hat_votes)) as float) / CAST(COUNT(*) as float), 3) / CAST(COUNT(*) as float) DESC"
     aml = conn.execute(query, (seven_days_ago, str(message.from_user.id))).fetchone()
     return bot.send_message(
         message.chat.id,
@@ -359,13 +355,6 @@ def handle_audio_messages(message):
     ]
 )
 def handle_message(message):
-    if (
-        message.text
-        and message.from_user.id in still_worthy
-        and "варфоломеевскую ночь" in message.text.lower()
-    ):
-        start_shooting(message)
-        return
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO user_messages (user_id, message_id, message_thread_id, created_at) VALUES(?, ?, ?, ?) ON CONFLICT DO NOTHING",
@@ -377,6 +366,13 @@ def handle_message(message):
         ),
     )
     conn.commit()
+    if (
+        message.text
+        and message.from_user.id in still_worthy
+        and "варфоломеевскую ночь" in message.text.lower()
+    ):
+        start_shooting(message)
+        return
 
     if message.message_thread_id == music_thread_id:
         handle_audio_messages(message)
