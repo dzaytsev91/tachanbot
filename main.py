@@ -189,7 +189,7 @@ def get_topic_id(message):
 @bot.message_handler(commands=["myaml"])
 def get_my_aml(message):
     seven_days_ago = datetime.now() - timedelta(days=7)
-    query = "SELECT ROUND(CAST((SUM(up_votes) - SUM(down_votes) - SUM(old_hat_votes)) as float) / CAST(COUNT(*) as float), 3), COUNT(*) FROM memes_posts_v2 WHERE created_at > ? AND user_id = ? ORDER BY ROUND(CAST((SUM(up_votes) - SUM(down_votes) - SUM(old_hat_votes)) as float) / CAST(COUNT(*) as float), 3) / CAST(COUNT(*) as float) DESC"
+    query = "SELECT ROUND(CAST((SUM(up_votes) - SUM(down_votes)) as float) / CAST(COUNT(*) as float), 3), COUNT(*) FROM memes_posts_v2 WHERE created_at > ? AND user_id = ? ORDER BY ROUND(CAST((SUM(up_votes) - SUM(down_votes)) as float) / CAST(COUNT(*) as float), 3) / CAST(COUNT(*) as float) DESC"
     aml = conn.execute(query, (seven_days_ago, str(message.from_user.id))).fetchone()
     return bot.send_message(
         message.chat.id,
