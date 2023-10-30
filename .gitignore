@@ -134,3 +134,4 @@ creds_prod.env
 main-dev.py
 test.png
 docker-compose.yml
+.ruff_cache/
