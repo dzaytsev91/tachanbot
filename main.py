@@ -49,6 +49,14 @@ conn.execute(
     "CREATE TABLE IF NOT EXISTS user_votes (user_id int, meme_id int, constraint user_votes_pk unique (user_id, meme_id));"
 )
 
+conn.execute(
+    "CREATE TABLE IF NOT EXISTS music_votes (user_id int, music_id int, constraint user_music_votes_pk unique (user_id, music_id));"
+)
+
+conn.execute(
+    "CREATE TABLE IF NOT EXISTS music_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int, username string, old_hat_votes int, flood_thread_message_id int, music_thread_message_id int, channel_message_id int);"
+)
+
 ydl_opts = {
     "format": "bestaudio/best",
     "retries": 5,
@@ -65,29 +73,57 @@ youtube_re = r"http(?:s?)://(?:www\.)?youtu(?:be\.com/watch\?v=|\.be/)([\w\-\_]*
 
 
 def generate_markup(
-    meme_message_id: int,
+    message_id: int,
     username: str,
     up_votes: int = 0,
     down_votes: int = 0,
     old_hat_votes: int = 0,
+    callback_prefix: str = "vote",
 ):
     markup = types.InlineKeyboardMarkup()
     markup.add(
         types.InlineKeyboardButton(
             "👍 " + (str(up_votes) if up_votes else ""),
-            callback_data="vote_up|" + str(meme_message_id),
+            callback_data="{}_up|{}".format(callback_prefix, message_id),
         ),
         types.InlineKeyboardButton(
             "👎 " + (str(down_votes) if down_votes else ""),
-            callback_data="vote_down|" + str(meme_message_id),
+            callback_data="{}_down|{}".format(callback_prefix, message_id),
         ),
         types.InlineKeyboardButton(
             username + "🪗 " + (str(old_hat_votes) if old_hat_votes else ""),
-            callback_data="vote_old_hat|" + str(meme_message_id),
+            callback_data="{}_old_hat|{}".format(callback_prefix, message_id),
         ),
     )
 
     return markup
+
+
+def save_music_to_db(
+    message,
+    author_name: str,
+    author_id: int,
+    flood_thread_message_id: int,
+    music_thread_message_id: int,
+):
+    query = "INSERT INTO music_posts (id, created_at, message_id, up_votes, down_votes, old_hat_votes, user_id, username, flood_thread_message_id, music_thread_message_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
+    cursor = conn.cursor()
+    cursor.execute(
+        query,
+        (
+            message.id,
+            datetime.now(),
+            message.id,
+            0,
+            0,
+            0,
+            author_id,
+            author_name,
+            flood_thread_message_id,
+            music_thread_message_id,
+        ),
+    )
+    conn.commit()
 
 
 def save_meme_to_db(
@@ -158,7 +194,7 @@ def vote_pressed(call: types.CallbackQuery):
     conn.commit()
 
     markup = generate_markup(
-        meme_message_id, username, up_votes, down_votes, old_hat_votes
+        meme_message_id, username, up_votes, down_votes, old_hat_votes, "vote"
     )
 
     for message_id in [flood_thread_message_id, memes_thread_message_id]:
@@ -174,6 +210,60 @@ def vote_pressed(call: types.CallbackQuery):
         message_id=channel_message_id,
         reply_markup=markup,
     )
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("music_vote"))
+def music_vote_pressed(call: types.CallbackQuery):
+    action = call.data.split("|")[0]
+    message_id = int(call.data.split("|")[1])
+
+    cursor = conn.cursor()
+    query = "INSERT INTO music_votes (user_id, music_id) VALUES(?, ?);"
+
+    try:
+        cursor.execute(query, (call.from_user.id, message_id))
+    except IntegrityError:
+        conn.commit()
+        bot.answer_callback_query(
+            call.id, "Иди другие песни оценивай, " + call.from_user.first_name
+        )
+        return
+
+    query = "select up_votes, down_votes, old_hat_votes, username, flood_thread_message_id, music_thread_message_id from music_posts WHERE id = ?;"
+    music_stats = conn.execute(query, (message_id,)).fetchall()
+    (
+        up_votes,
+        down_votes,
+        old_hat_votes,
+        username,
+        flood_thread_message_id,
+        music_thread_message_id,
+    ) = music_stats[0] if len(music_stats) > 0 else (0, 0, 0, "", 0, 0)
+
+    if action == "music_vote_up":
+        up_votes += 1
+    elif action == "music_vote_down":
+        down_votes += 1
+    elif action == "music_vote_old_hat":
+        old_hat_votes += 1
+
+    query = (
+        "UPDATE music_posts SET up_votes=?, down_votes=?, old_hat_votes=? WHERE id = ?;"
+    )
+    conn.execute(query, (up_votes, down_votes, old_hat_votes, message_id))
+    conn.commit()
+
+    markup = generate_markup(
+        message_id, username, up_votes, down_votes, old_hat_votes, "music_vote"
+    )
+
+    for thread_message_id in [flood_thread_message_id, music_thread_message_id]:
+        bot.edit_message_caption(
+            caption=call.message.caption or " ",
+            chat_id=channel_chat_id,
+            message_id=thread_message_id,
+            reply_markup=markup,
+        )
 
 
 @bot.message_handler(commands=["topicid"])
@@ -317,6 +407,8 @@ def handle_audio_messages(message):
         return
     elif message.text and re.search(youtube_re, message.text):
         youtube_link = re.search(youtube_re, message.text)[0]
+        author_name = message.from_user.first_name
+        author_id = message.from_user.id
         bot.delete_message(message.chat.id, message.id)
         temp_msg = bot.send_message(
             message.chat.id,
@@ -329,11 +421,38 @@ def handle_audio_messages(message):
             new_filename = str(Path(filename).with_suffix(".mp3"))
 
         bot.delete_message(message.chat.id, temp_msg.id)
-        bot.send_audio(
+        music_message = bot.send_audio(
             message.chat.id,
             audio=open(new_filename, "rb"),
             message_thread_id=message.message_thread_id,
             caption=message.from_user.first_name,
+        )
+
+        markup = generate_markup(
+            music_message.id, author_name, callback_prefix="music_vote"
+        )
+
+        bot.edit_message_reply_markup(
+            chat_id=music_message.chat.id,
+            message_id=music_message.id,
+            reply_markup=markup,
+        )
+
+        flood_thread_message = bot.copy_message(
+            chat_id=music_message.chat.id,
+            from_chat_id=music_message.chat.id,
+            message_thread_id=flood_thread_id,
+            message_id=music_message.id,
+            disable_notification=True,
+            reply_markup=markup,
+        )
+
+        save_music_to_db(
+            music_message,
+            author_name,
+            author_id,
+            flood_thread_message.message_id,
+            music_message.message_id,
         )
         os.remove(new_filename)
         return
@@ -371,7 +490,7 @@ def handle_message(message):
         and message.from_user.id in still_worthy
         and "варфоломеевскую ночь" in message.text.lower()
     ):
-        start_shooting(message)
+        # start_shooting(message)
         return
 
     if message.message_thread_id == music_thread_id:
@@ -390,7 +509,9 @@ def handle_message(message):
     ):
         bot.delete_message(message.chat.id, message.id)
     else:
-        markup = generate_markup(message.id, message.from_user.first_name)
+        markup = generate_markup(
+            message.id, message.from_user.first_name, callback_prefix="vote"
+        )
 
         memes_thread_message = bot.copy_message(
             chat_id=message.chat.id,
