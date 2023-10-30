@@ -54,7 +54,7 @@ conn.execute(
 )
 
 conn.execute(
-    "CREATE TABLE IF NOT EXISTS music_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int, username string, old_hat_votes int, flood_thread_message_id int, music_thread_message_id int, channel_message_id int);"
+    "CREATE TABLE IF NOT EXISTS music_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int, username string, old_hat_votes int, flood_thread_message_id int, music_thread_message_id int);"
 )
 
 ydl_opts = {
