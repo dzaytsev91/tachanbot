@@ -190,7 +190,8 @@ def get_topic_id(message):
 def get_my_aml(message):
     seven_days_ago = datetime.now() - timedelta(days=7)
     query = "SELECT ROUND(CAST((SUM(up_votes) - SUM(down_votes)) as float) / CAST(COUNT(*) as float), 3), COUNT(*) FROM memes_posts_v2 WHERE created_at > ? AND user_id = ? ORDER BY ROUND(CAST((SUM(up_votes) - SUM(down_votes)) as float) / CAST(COUNT(*) as float), 3) / CAST(COUNT(*) as float) DESC"
-    aml = conn.execute(query, (seven_days_ago, str(message.from_user.id))).fetchone()
+    aml = conn.execute(
+        query, (seven_days_ago, str(message.from_user.id))).fetchone()
     return bot.send_message(
         message.chat.id,
         "Your aml is: {}".format(aml),
@@ -329,11 +330,21 @@ def handle_audio_messages(message):
             new_filename = str(Path(filename).with_suffix(".mp3"))
 
         bot.delete_message(message.chat.id, temp_msg.id)
+        if message.from_user.last_name == "Жикин":
+            name = random.choice(
+                "Иван",
+                "Сергей",
+                "Жыкенатор",
+                "Лидохейтер",
+                "хуй_его_знает_какая_из_его_личностей"
+            )
+        else:
+            name = message.from_user.first_name
         bot.send_audio(
             message.chat.id,
             audio=open(new_filename, "rb"),
             message_thread_id=message.message_thread_id,
-            caption=message.from_user.first_name,
+            caption=name,
         )
         os.remove(new_filename)
         return
