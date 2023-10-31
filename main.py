@@ -130,9 +130,8 @@ def save_meme_to_db(
     message,
     flood_thread_message_id: int,
     memes_thread_message_id: int,
-    channel_message_id: int,
 ):
-    query = "INSERT INTO memes_posts_v2 (id, created_at, message_id, up_votes, down_votes, old_hat_votes, user_id, username, flood_thread_message_id, memes_thread_message_id, channel_message_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
+    query = "INSERT INTO memes_posts_v2 (id, created_at, message_id, up_votes, down_votes, old_hat_votes, user_id, username, flood_thread_message_id, memes_thread_message_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
     cursor = conn.cursor()
     cursor.execute(
         query,
@@ -147,7 +146,6 @@ def save_meme_to_db(
             message.from_user.first_name,
             flood_thread_message_id,
             memes_thread_message_id,
-            channel_message_id,
         ),
     )
     conn.commit()
@@ -170,7 +168,7 @@ def vote_pressed(call: types.CallbackQuery):
         )
         return
 
-    query = "select up_votes, down_votes, old_hat_votes, username, flood_thread_message_id, memes_thread_message_id, channel_message_id from memes_posts_v2 WHERE id = ?;"
+    query = "select up_votes, down_votes, old_hat_votes, username, flood_thread_message_id, memes_thread_message_id from memes_posts_v2 WHERE id = ?;"
     meme_stats = conn.execute(query, (meme_message_id,)).fetchall()
     (
         up_votes,
@@ -179,7 +177,6 @@ def vote_pressed(call: types.CallbackQuery):
         username,
         flood_thread_message_id,
         memes_thread_message_id,
-        channel_message_id,
     ) = meme_stats[0] if len(meme_stats) > 0 else (0, 0, 0, "", 0, 0, 0)
 
     if action == "vote_up":
@@ -197,19 +194,13 @@ def vote_pressed(call: types.CallbackQuery):
         meme_message_id, username, up_votes, down_votes, old_hat_votes, "vote"
     )
 
-    for message_id in [flood_thread_message_id, memes_thread_message_id]:
+    for thread_message_id in [flood_thread_message_id, memes_thread_message_id]:
         bot.edit_message_caption(
             caption=call.message.caption or " ",
             chat_id=memes_chat_link_id,
-            message_id=message_id,
+            message_id=thread_message_id,
             reply_markup=markup,
         )
-    bot.edit_message_caption(
-        caption=call.message.caption or " ",
-        chat_id=channel_chat_id,
-        message_id=channel_message_id,
-        reply_markup=markup,
-    )
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music_vote"))
@@ -531,19 +522,10 @@ def handle_message(message):
             reply_markup=markup,
         )
 
-        channel_message = bot.copy_message(
-            chat_id=channel_chat_id,
-            from_chat_id=message.chat.id,
-            message_id=message.id,
-            disable_notification=True,
-            reply_markup=markup,
-        )
-
         save_meme_to_db(
             message,
             flood_thread_message.message_id,
             memes_thread_message.message_id,
-            channel_message.message_id,
         )
         bot.delete_message(message.chat.id, message.id)
 
