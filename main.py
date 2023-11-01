@@ -259,6 +259,9 @@ def music_vote_pressed(call: types.CallbackQuery):
 
 @bot.message_handler(commands=["topicid"])
 def get_topic_id(message):
+    if message.message_thread_id == memes_thread_id:
+        bot.delete_message(message.chat.id, message.id)
+        return
     return bot.send_message(
         message.chat.id,
         "here is topic id: {}".format(message.message_thread_id),
@@ -269,6 +272,9 @@ def get_topic_id(message):
 
 @bot.message_handler(commands=["myaml"])
 def get_my_aml(message):
+    if message.message_thread_id == memes_thread_id:
+        bot.delete_message(message.chat.id, message.id)
+        return
     seven_days_ago = datetime.now() - timedelta(days=7)
     query = "SELECT ROUND(CAST((SUM(up_votes) - SUM(down_votes)) as float) / CAST(COUNT(*) as float), 3), COUNT(*) FROM memes_posts_v2 WHERE created_at > ? AND user_id = ? ORDER BY ROUND(CAST((SUM(up_votes) - SUM(down_votes)) as float) / CAST(COUNT(*) as float), 3) / CAST(COUNT(*) as float) DESC"
     aml = conn.execute(query, (seven_days_ago, str(message.from_user.id))).fetchone()
@@ -282,6 +288,9 @@ def get_my_aml(message):
 
 @bot.message_handler(commands=["chatid"])
 def get_chat_id(message):
+    if message.message_thread_id == memes_thread_id:
+        bot.delete_message(message.chat.id, message.id)
+        return
     return bot.send_message(
         message.chat.id,
         "here is chat id: {}".format(message.chat.id),
@@ -292,6 +301,9 @@ def get_chat_id(message):
 
 @bot.message_handler(commands=["statistic"])
 def get_statistic(message):
+    if message.message_thread_id == memes_thread_id:
+        bot.delete_message(message.chat.id, message.id)
+        return
     seven_days_ago = datetime.now() - timedelta(days=14)
     query = "select date(created_at), count(*) from memes_posts_v2 WHERE created_at > ? group by date(created_at) order by date(created_at);"
     rows = conn.execute(query, (seven_days_ago,)).fetchall()
