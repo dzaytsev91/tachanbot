@@ -34,7 +34,12 @@ conn = init_db("memes.db")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("vote"))
 def vote_pressed(call: telebot.types.CallbackQuery):
-    meme_vote_pressed(bot, call, conn, memes_thread_id)
+    meme_vote_pressed(bot, call, conn, memes_chat_link_id)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("music_vote"))
+def music_vote_pressed(call: telebot.types.CallbackQuery):
+    meme_vote_pressed(bot, call, conn, channel_chat_id)
 
 
 @bot.message_handler(
