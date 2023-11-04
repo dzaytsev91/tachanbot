@@ -1,7 +1,7 @@
 all: clean sdist
 
 format:
-	black main.py && isort --profile black main.py
+	ruff format .
 
 develop: clean
 	python3 -m venv venv
