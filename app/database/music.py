@@ -33,7 +33,7 @@ def save_music_to_db(
     conn.commit()
 
 
-def music_vote_pressed(bot, call: types.CallbackQuery, conn, channel_chat_id: int):
+def music_vote_process(bot, call: types.CallbackQuery, conn, channel_chat_id: int):
     action = call.data.split("|")[0]
     message_id = int(call.data.split("|")[1])
 

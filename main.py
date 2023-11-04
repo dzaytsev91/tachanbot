@@ -4,6 +4,7 @@ import telebot
 
 from app.database.create_db_connection import init_db
 from app.database.meme import meme_vote_pressed
+from app.database.music import music_vote_process
 from app.database.save_message import save_message
 from app.handlers.left_chat_handler import process_left_member
 from app.handlers.meme_handler import process_meme
@@ -39,7 +40,7 @@ def vote_pressed(call: telebot.types.CallbackQuery):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music_vote"))
 def music_vote_pressed(call: telebot.types.CallbackQuery):
-    music_vote_pressed(bot, call, conn, channel_chat_id)
+    music_vote_process(bot, call, conn, channel_chat_id)
 
 
 @bot.message_handler(
