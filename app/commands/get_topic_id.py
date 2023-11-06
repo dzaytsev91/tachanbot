@@ -1,8 +1,4 @@
-from main import bot, memes_thread_id
-
-
-@bot.message_handler(commands=["topicid"])
-def get_topic_id(message):
+def process_topic_id(bot, message, memes_thread_id):
     if message.message_thread_id == memes_thread_id:
         bot.delete_message(message.chat.id, message.id)
         return

@@ -2,6 +2,10 @@ import os
 
 import telebot
 
+from app.commands.get_aml import process_my_aml
+from app.commands.get_chat_id import process_chat_id
+from app.commands.get_statistic import process_statistic
+from app.commands.get_topic_id import process_topic_id
 from app.database.create_db_connection import init_db
 from app.database.meme import meme_vote_pressed
 from app.database.music import music_vote_process
@@ -41,6 +45,36 @@ def vote_pressed(call: telebot.types.CallbackQuery):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music_vote"))
 def music_vote_pressed(call: telebot.types.CallbackQuery):
     music_vote_process(bot, call, conn, channel_chat_id)
+
+
+@bot.message_handler(commands=["myaml"])
+def get_my_aml(message):
+    process_my_aml(bot, message, conn, memes_thread_id)
+
+
+@bot.message_handler(commands=["chatid"])
+def get_chat_id(message):
+    process_chat_id(bot, message, memes_thread_id)
+
+
+@bot.message_handler(content_types=["new_chat_members"])
+def hello(message):
+    process_new_member(message, bot, conn)
+
+
+@bot.message_handler(commands=["statistic"])
+def get_statistic(message):
+    process_statistic(bot, message, conn, memes_thread_id)
+
+
+@bot.message_handler(commands=["topicid"])
+def get_topic_id(message):
+    process_topic_id(bot, message, memes_thread_id)
+
+
+@bot.message_handler(content_types=["left_chat_member"])
+def goodbye(message):
+    process_left_member(message, bot, conn)
 
 
 @bot.message_handler(
@@ -84,16 +118,6 @@ def handle_message(message):
         bot.delete_message(message.chat.id, message.id)
     else:
         process_meme(bot, conn, message, memes_thread_id, flood_thread_id)
-
-
-@bot.message_handler(content_types=["new_chat_members"])
-def hello(message):
-    process_new_member(message, bot, conn)
-
-
-@bot.message_handler(content_types=["left_chat_member"])
-def goodbye(message):
-    process_left_member(message, bot, conn)
 
 
 def main():

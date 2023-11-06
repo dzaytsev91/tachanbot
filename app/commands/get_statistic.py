@@ -3,14 +3,11 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from main import bot, memes_thread_id, conn
-
 matplotlib.use("agg")
 matplotlib.rc("figure", figsize=(20, 5))
 
 
-@bot.message_handler(commands=["statistic"])
-def get_statistic(message):
+def process_statistic(bot, message, conn, memes_thread_id):
     if message.message_thread_id == memes_thread_id:
         bot.delete_message(message.chat.id, message.id)
         return

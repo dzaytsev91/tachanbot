@@ -1,10 +1,7 @@
 from datetime import datetime, timedelta
 
-from main import bot, memes_thread_id, conn
 
-
-@bot.message_handler(commands=["myaml"])
-def get_my_aml(message):
+def process_my_aml(bot, message, conn, memes_thread_id):
     if message.message_thread_id == memes_thread_id:
         bot.delete_message(message.chat.id, message.id)
         return
