@@ -11,7 +11,7 @@ memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
 chat_creator = 43529628
 minimum_memes_count = 10
 db_path = os.path.join(
-    os.path.normpath(__file__).rsplit(os.sep, maxsplit=3)[0], "memes.db"
+    os.path.abspath(__file__).rsplit(os.sep, maxsplit=3)[0], "memes.db"
 )
 conn = sqlite3.connect(db_path, check_same_thread=False)
 
