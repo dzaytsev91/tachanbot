@@ -1,8 +1,9 @@
 import os
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import date
 
 import telebot
+from dateutil.relativedelta import relativedelta, MO
 
 bot = telebot.TeleBot(os.getenv("BOT_TOKEN"))
 memes_chat_id = int(os.getenv("MEMES_CHAT_ID"))
@@ -17,9 +18,10 @@ conn = sqlite3.connect(db_path, check_same_thread=False)
 
 
 def main():
-    seven_days_ago = datetime.now() - timedelta(days=7)
+    today = date.today()
+    last_monday = today + relativedelta(weekday=MO(-1))
     query = "SELECT user_id, username, ROUND(CAST((SUM(up_votes) - SUM(down_votes)) as float) / CAST(COUNT(*) as float), 3),  SUM(up_votes), COUNT(*) FROM memes_posts_v2 WHERE created_at > ? GROUP BY user_id, username ORDER BY ROUND(CAST((SUM(up_votes) - SUM(down_votes)) as float) / CAST(COUNT(*) as float), 3) DESC"
-    rows = conn.execute(query, (seven_days_ago,)).fetchall()
+    rows = conn.execute(query, (last_monday,)).fetchall()
     msg = ["AML - Average Meme Likes\n"]
     stack = ["🥉", "🥈", "🥇"]
     gold_user_id = None
@@ -104,10 +106,9 @@ def main():
                 custom_title="Dank boss",
             )
     except Exception as err:
-        print(err)
         bot.send_message(
             memes_chat_id,
-            "Опять криворукий разраб меня писал, ошибка",
+            "Опять криворукий разраб меня писал, ошибка, error: {}".format(err),
             message_thread_id=flood_thread_id,
             parse_mode="Markdown",
         )
