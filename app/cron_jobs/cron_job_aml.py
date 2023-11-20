@@ -19,7 +19,7 @@ conn = sqlite3.connect(db_path, check_same_thread=False)
 
 def main():
     today = date.today()
-    last_monday = today + relativedelta(weekday=MO(-1))
+    last_monday = today + relativedelta(weekday=MO(-2))
     query = "SELECT user_id, username, ROUND(CAST((SUM(up_votes) - SUM(down_votes)) as float) / CAST(COUNT(*) as float), 3),  SUM(up_votes), COUNT(*) FROM memes_posts_v2 WHERE created_at > ? GROUP BY user_id, username ORDER BY ROUND(CAST((SUM(up_votes) - SUM(down_votes)) as float) / CAST(COUNT(*) as float), 3) DESC"
     rows = conn.execute(query, (last_monday,)).fetchall()
     msg = ["AML - Average Meme Likes\n"]
