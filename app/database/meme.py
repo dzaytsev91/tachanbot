@@ -33,7 +33,7 @@ def save_meme_to_db(
     conn.commit()
 
 
-def meme_vote_pressed(bot, call: types.CallbackQuery, conn, memes_chat_link_id, channel_chat_id):
+def meme_vote_pressed(bot, call: types.CallbackQuery, conn, memes_chat_link_id, external_channel_message):
     action = call.data.split("|")[0]
     meme_message_id = int(call.data.split("|")[1])
 
@@ -85,7 +85,7 @@ def meme_vote_pressed(bot, call: types.CallbackQuery, conn, memes_chat_link_id, 
         )
     bot.edit_message_caption(
         caption=call.message.caption or " ",
-        chat_id=channel_chat_id,
+        chat_id=external_channel_message,
         message_id=channel_message_id,
         reply_markup=markup,
     )

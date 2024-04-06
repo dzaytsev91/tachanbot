@@ -2,7 +2,7 @@ from app.database.meme import save_meme_to_db
 from app.utils.markup import generate_markup
 
 
-def process_meme(bot, conn, message, memes_thread_id, flood_thread_id, channel_chat_id):
+def process_meme(bot, conn, message, memes_thread_id, flood_thread_id, external_channel_chat_id):
     markup = generate_markup(
         message.id, message.from_user.first_name, callback_prefix="vote"
     )
@@ -25,8 +25,8 @@ def process_meme(bot, conn, message, memes_thread_id, flood_thread_id, channel_c
         reply_markup=markup,
     )
 
-    channel_message = bot.copy_message(
-        chat_id=channel_chat_id,
+    external_channel_message = bot.copy_message(
+        chat_id=external_channel_chat_id,
         from_chat_id=message.chat.id,
         message_id=message.id,
         disable_notification=True,
@@ -38,6 +38,6 @@ def process_meme(bot, conn, message, memes_thread_id, flood_thread_id, channel_c
         message,
         flood_thread_message.message_id,
         memes_thread_message.message_id,
-        channel_message.message_id,
+        external_channel_message.message_id,
     )
     bot.delete_message(message.chat.id, message.id)

@@ -28,6 +28,7 @@ memes_thread_id = int(os.getenv("MEMES_THREAD_ID", 1))
 flood_thread_id = int(os.getenv("FLOOD_THREAD_ID", 1))
 memes_chat_link_id = int(os.getenv("MEMES_CHAT_ID", 1))
 channel_chat_id = int(os.getenv("CHANNEL_CHAT_ID", -1001871336301))
+external_channel_chat_id = int(os.getenv("EXTERNAL_CHANNEL_CHAT_ID", -1001871336301))
 music_thread_id = int(os.getenv("MUSIC_THREAD_ID", 2))
 
 still_worthy = [43529628, 163181560, 678126582, 211291464, 374984530]
@@ -39,7 +40,7 @@ conn = init_db("memes.db")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("vote"))
 def vote_pressed(call: telebot.types.CallbackQuery):
-    meme_vote_pressed(bot, call, conn, memes_chat_link_id, channel_chat_id)
+    meme_vote_pressed(bot, call, conn, memes_chat_link_id, external_channel_chat_id)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music_vote"))
@@ -117,7 +118,7 @@ def handle_message(message):
     ):
         bot.delete_message(message.chat.id, message.id)
     else:
-        process_meme(bot, conn, message, memes_thread_id, flood_thread_id, channel_chat_id)
+        process_meme(bot, conn, message, memes_thread_id, flood_thread_id, external_channel_chat_id)
 
 
 def main():
