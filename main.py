@@ -39,7 +39,7 @@ conn = init_db("memes.db")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("vote"))
 def vote_pressed(call: telebot.types.CallbackQuery):
-    meme_vote_pressed(bot, call, conn, memes_chat_link_id)
+    meme_vote_pressed(bot, call, conn, memes_chat_link_id, channel_chat_id)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music_vote"))
@@ -117,7 +117,7 @@ def handle_message(message):
     ):
         bot.delete_message(message.chat.id, message.id)
     else:
-        process_meme(bot, conn, message, memes_thread_id, flood_thread_id)
+        process_meme(bot, conn, message, memes_thread_id, flood_thread_id, channel_chat_id)
 
 
 def main():

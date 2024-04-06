@@ -10,8 +10,9 @@ def save_meme_to_db(
     message,
     flood_thread_message_id: int,
     memes_thread_message_id: int,
+    channel_message_id: int,
 ):
-    query = "INSERT INTO memes_posts_v2 (id, created_at, message_id, up_votes, down_votes, old_hat_votes, user_id, username, flood_thread_message_id, memes_thread_message_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
+    query = "INSERT INTO memes_posts_v2 (id, created_at, message_id, up_votes, down_votes, old_hat_votes, user_id, username, flood_thread_message_id, memes_thread_message_id, channel_message_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
     cursor = conn.cursor()
     cursor.execute(
         query,
@@ -26,12 +27,13 @@ def save_meme_to_db(
             message.from_user.first_name,
             flood_thread_message_id,
             memes_thread_message_id,
+            channel_message_id,
         ),
     )
     conn.commit()
 
 
-def meme_vote_pressed(bot, call: types.CallbackQuery, conn, memes_chat_link_id):
+def meme_vote_pressed(bot, call: types.CallbackQuery, conn, memes_chat_link_id, channel_chat_id):
     action = call.data.split("|")[0]
     meme_message_id = int(call.data.split("|")[1])
 
@@ -47,7 +49,7 @@ def meme_vote_pressed(bot, call: types.CallbackQuery, conn, memes_chat_link_id):
         )
         return
 
-    query = "select up_votes, down_votes, old_hat_votes, username, flood_thread_message_id, memes_thread_message_id from memes_posts_v2 WHERE id = ?;"
+    query = "select up_votes, down_votes, old_hat_votes, username, flood_thread_message_id, memes_thread_message_id, channel_message_id from memes_posts_v2 WHERE id = ?;"
     meme_stats = conn.execute(query, (meme_message_id,)).fetchall()
     (
         up_votes,
@@ -56,7 +58,8 @@ def meme_vote_pressed(bot, call: types.CallbackQuery, conn, memes_chat_link_id):
         username,
         flood_thread_message_id,
         memes_thread_message_id,
-    ) = meme_stats[0] if len(meme_stats) > 0 else (0, 0, 0, "", 0, 0, 0)
+        channel_message_id,
+    ) = meme_stats[0] if len(meme_stats) > 0 else (0, 0, 0, "", 0, 0, 0, 0, 0)
 
     if action == "vote_up":
         up_votes += 1
@@ -80,3 +83,9 @@ def meme_vote_pressed(bot, call: types.CallbackQuery, conn, memes_chat_link_id):
             message_id=thread_message_id,
             reply_markup=markup,
         )
+    bot.edit_message_caption(
+        caption=call.message.caption or " ",
+        chat_id=channel_chat_id,
+        message_id=channel_message_id,
+        reply_markup=markup,
+    )
