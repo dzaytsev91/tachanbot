@@ -12,7 +12,7 @@ def hello(message):
         bot.send_message(
             message.chat.id,
             reply_to_message_id=message.id,
-            text="Добро пожаловать в чат {}! Пожалуйста не забудь проголосовать в опросе :) \n https://t.me/c/2062868616/107".format(
+            text="Добро пожаловать в чат {}!\n Пожалуйста не забудь проголосовать в опросе :) \n https://t.me/c/2062868616/107".format(
                 mention
             ),
             parse_mode="Markdown",
