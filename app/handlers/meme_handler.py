@@ -49,8 +49,3 @@ def process_meme(
             message_id=thread_message_id.message_id,
             reply_markup=markup,
         )
-    bot.edit_message_reply_markup(
-        chat_id=external_channel_chat_id,
-        message_id=external_channel_message.message_id,
-        reply_markup=markup,
-    )
