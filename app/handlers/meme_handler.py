@@ -27,7 +27,7 @@ def process_meme(
         bot.send_message(
             chat_id=message.chat.id,
             message_thread_id=flood_thread_id,
-            text="@{} пиздец ты 🤡🤡🤡🤡🤡, уже было https://t.me/c/{}/{}/{}".format(
+            text="@{} \nпиздец ты 🤡🤡🤡🤡🤡 \nуже было https://t.me/c/{}/{}/{}".format(
                 message.from_user.first_name,
                 str(memes_chat_id)[4:],
                 memes_thread_id,
