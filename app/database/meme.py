@@ -11,8 +11,9 @@ def save_meme_to_db(
     flood_thread_message_id: int,
     memes_thread_message_id: int,
     channel_message_id: int,
+    hash_id: str,
 ):
-    query = "INSERT INTO memes_posts_v2 (id, created_at, message_id, up_votes, down_votes, old_hat_votes, user_id, username, flood_thread_message_id, memes_thread_message_id, channel_message_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
+    query = "INSERT INTO memes_posts_v2 (id, created_at, message_id, up_votes, down_votes, old_hat_votes, user_id, username, flood_thread_message_id, memes_thread_message_id, channel_message_id, hash) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;"
     cursor = conn.cursor()
     cursor.execute(
         query,
@@ -28,6 +29,7 @@ def save_meme_to_db(
             flood_thread_message_id,
             memes_thread_message_id,
             channel_message_id,
+            hash_id,
         ),
     )
     conn.commit()
@@ -85,3 +87,13 @@ def meme_vote_pressed(
             message_id=thread_message_id,
             reply_markup=markup,
         )
+
+
+def is_duplicate_by_hash(conn, image_hash) -> int:
+    cursor = conn.cursor()
+    rows = cursor.execute(
+        "SELECT message_id FROM memes_posts_v2 WHERE hash = '{}'".format(image_hash)
+    ).fetchall()
+    if len(rows) > 0:
+        return rows[0][0]
+    return 0

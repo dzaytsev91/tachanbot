@@ -1,4 +1,5 @@
-pyTelegramBotAPI
+imagehash
 matplotlib
 pandas
+pyTelegramBotAPI
 youtube-dl

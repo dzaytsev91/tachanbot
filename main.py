@@ -118,7 +118,15 @@ def handle_message(message):
     ):
         bot.delete_message(message.chat.id, message.id)
     else:
-        process_meme(bot, conn, message, memes_thread_id, flood_thread_id, external_channel_chat_id)
+        process_meme(
+            bot,
+            conn,
+            message,
+            memes_thread_id,
+            flood_thread_id,
+            external_channel_chat_id,
+            memes_chat_link_id,
+        )
 
 
 def main():
