@@ -17,24 +17,25 @@ def process_meme(
     external_channel_chat_id,
     memes_chat_id,
 ):
-    file_id = message.photo[-1].file_id
-    image_url = bot.get_file_url(file_id)
-    image_bytes = BytesIO(requests.get(image_url).content)
-    image_hash = str(imagehash.average_hash(Image.open(image_bytes)))
-    duplicate_message_id = is_duplicate_by_hash(conn, image_hash)
-    if duplicate_message_id:
-        bot.delete_message(message.chat.id, message.id)
-        bot.send_message(
-            chat_id=message.chat.id,
-            message_thread_id=flood_thread_id,
-            text="@{} \nпиздец ты 🤡🤡🤡🤡🤡 \nуже было https://t.me/c/{}/{}/{}".format(
-                message.from_user.first_name,
-                str(memes_chat_id)[4:],
-                memes_thread_id,
-                duplicate_message_id,
-            ),
-        )
-        return
+    if message.photo:
+        file_id = message.photo[-1].file_id
+        image_url = bot.get_file_url(file_id)
+        image_bytes = BytesIO(requests.get(image_url).content)
+        image_hash = str(imagehash.average_hash(Image.open(image_bytes)))
+        duplicate_message_id = is_duplicate_by_hash(conn, image_hash)
+        if duplicate_message_id:
+            bot.delete_message(message.chat.id, message.id)
+            bot.send_message(
+                chat_id=message.chat.id,
+                message_thread_id=flood_thread_id,
+                text="@{} \nпиздец ты 🤡🤡🤡🤡🤡 \nуже было https://t.me/c/{}/{}/{}".format(
+                    message.from_user.first_name,
+                    str(memes_chat_id)[4:],
+                    memes_thread_id,
+                    duplicate_message_id,
+                ),
+            )
+            return
 
     markup = generate_markup(
         message.id, message.from_user.first_name, callback_prefix="vote"
