@@ -17,6 +17,7 @@ def process_meme(
     external_channel_chat_id,
     memes_chat_id,
 ):
+    image_hash = ""
     if message.photo:
         file_id = message.photo[-1].file_id
         image_url = bot.get_file_url(file_id)
