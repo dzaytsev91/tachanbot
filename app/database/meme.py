@@ -92,7 +92,9 @@ def meme_vote_pressed(
 def is_duplicate_by_hash(conn, image_hash) -> int:
     cursor = conn.cursor()
     rows = cursor.execute(
-        "SELECT message_id FROM memes_posts_v2 WHERE hash = '{}'".format(image_hash)
+        "SELECT memes_thread_message_id FROM memes_posts_v2 WHERE hash = '{}'".format(
+            image_hash
+        )
     ).fetchall()
     if len(rows) > 0:
         return rows[0][0]
