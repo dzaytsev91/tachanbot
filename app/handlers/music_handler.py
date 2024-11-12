@@ -2,7 +2,7 @@ import os
 import re
 from pathlib import Path
 
-import youtube_dl
+from yt_dlp import YoutubeDL
 
 from app.database.music import save_music_to_db
 from app.utils.markup import generate_markup
@@ -35,7 +35,7 @@ def handle_audio_messages(bot, conn, message, flood_thread_id):
             text="Downloading song 🎶",
             message_thread_id=message.message_thread_id,
         )
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        with YoutubeDL(ydl_opts) as ydl:
             try:
                 info = ydl.extract_info(youtube_link, download=True)
             except Exception as err:
@@ -44,6 +44,15 @@ def handle_audio_messages(bot, conn, message, flood_thread_id):
                     message.chat.id,
                     message_thread_id=message.message_thread_id,
                     text=err,
+                )
+                return
+
+            if info.get("duration", 1000) > 600:
+                bot.delete_message(message.chat.id, temp_msg.id)
+                bot.send_message(
+                    message.chat.id,
+                    message_thread_id=message.message_thread_id,
+                    text="Видео длинее 10 минут не поддерживается",
                 )
                 return
             filename = ydl.prepare_filename(info)

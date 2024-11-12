@@ -2,4 +2,4 @@ imagehash
 matplotlib
 pandas
 pyTelegramBotAPI
-youtube-dl
+yt-dlp
