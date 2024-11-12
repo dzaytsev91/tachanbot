@@ -1,11 +1,14 @@
 import os
 import re
+import logging
 from pathlib import Path
 
 from yt_dlp import YoutubeDL
 
 from app.database.music import save_music_to_db
 from app.utils.markup import generate_markup
+
+log = logging.getLogger(__name__)
 
 ydl_opts = {
     "format": "bestaudio/best",
@@ -46,7 +49,7 @@ def handle_audio_messages(bot, conn, message, flood_thread_id):
                     text=err,
                 )
                 return
-
+            log.info("video duration: {}".format(info.get("duration", 0)))
             if info.get("duration", 1000) > 600:
                 bot.delete_message(message.chat.id, temp_msg.id)
                 bot.send_message(
