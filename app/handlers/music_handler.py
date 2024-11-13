@@ -40,7 +40,7 @@ def handle_audio_messages(bot, conn, message, flood_thread_id):
         )
         with YoutubeDL(ydl_opts) as ydl:
             try:
-                info = ydl.extract_info(youtube_link, download=True)
+                info = ydl.extract_info(youtube_link, download=False)
             except Exception as err:
                 bot.delete_message(message.chat.id, temp_msg.id)
                 bot.send_message(
@@ -49,7 +49,7 @@ def handle_audio_messages(bot, conn, message, flood_thread_id):
                     text=err,
                 )
                 return
-            log.info("video duration: {}".format(info.get("duration", 0)))
+            log.info("video link: {},  duration: {}".format(youtube_link, info.get("duration", 0)))
             if info.get("duration", 1000) > 600:
                 bot.delete_message(message.chat.id, temp_msg.id)
                 bot.send_message(
@@ -58,6 +58,7 @@ def handle_audio_messages(bot, conn, message, flood_thread_id):
                     text="Видео длинее 10 минут не поддерживается",
                 )
                 return
+            info = ydl.extract_info(youtube_link, download=True)
             filename = ydl.prepare_filename(info)
             new_filename = str(Path(filename).with_suffix(".mp3"))
 
