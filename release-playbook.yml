@@ -1,0 +1,13 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Pull from git
+      git:
+        repo: git@github.com:dzaytsev91/tachanbot.git
+        dest: /root/projects/tachanbot
+    - name: Build and start container
+      become: True
+      shell:
+        cmd: "docker compose -f docker-compose.yml up -d --build"
+        chdir: /root/projects/tachanbot
