@@ -40,6 +40,7 @@ def save_meme_to_db(
 def meme_vote_pressed(
         bot, call: types.CallbackQuery, conn, memes_chat_link_id, external_channel_message
 ):
+    pressed_from_channel = False
     action = call.data.split("|")[0]
     meme_message_id = int(call.data.split("|")[1])
 
@@ -74,8 +75,10 @@ def meme_vote_pressed(
     elif action == "vote_down":
         down_votes += 1
     if action == "vote_channel_up":
+        pressed_from_channel = True
         channel_up_votes += 1
     elif action == "vote_channel_down":
+        pressed_from_channel = True
         channel_down_votes += 1
 
     elif action == "vote_old_hat":
@@ -95,6 +98,8 @@ def meme_vote_pressed(
     )
 
     for thread_message_id in [flood_thread_message_id, memes_thread_message_id]:
+        if pressed_from_channel:
+            continue
         bot.edit_message_caption(
             caption=call.message.caption or " ",
             chat_id=memes_chat_link_id,
