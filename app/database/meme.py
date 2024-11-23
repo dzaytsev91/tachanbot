@@ -89,7 +89,7 @@ def meme_vote_pressed(
         meme_message_id, username, up_votes, down_votes, old_hat_votes, "vote"
     )
 
-    markup_channel = generate_markup(
+    markup_external_channel = generate_markup(
         meme_message_id, username, up_votes + channel_up_votes, down_votes + channel_down_votes, old_hat_votes,
         "vote_channel"
     )
@@ -106,7 +106,7 @@ def meme_vote_pressed(
         caption=call.message.caption or " ",
         chat_id=external_channel_message,
         message_id=channel_message_id,
-        reply_markup=markup_channel,
+        reply_markup=markup_external_channel,
     )
 
 

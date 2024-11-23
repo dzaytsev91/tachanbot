@@ -9,13 +9,13 @@ from app.utils.markup import generate_markup
 
 
 def process_meme(
-    bot,
-    conn,
-    message,
-    memes_thread_id,
-    flood_thread_id,
-    external_channel_chat_id,
-    memes_chat_id,
+        bot,
+        conn,
+        message,
+        memes_thread_id,
+        flood_thread_id,
+        external_channel_chat_id,
+        memes_chat_id,
 ):
     image_hash = ""
     if message.photo:
@@ -39,8 +39,11 @@ def process_meme(
             )
             return
 
-    markup = generate_markup(
+    markup_inner = generate_markup(
         message.id, message.from_user.first_name, callback_prefix="vote"
+    )
+    markup_external_channel = generate_markup(
+        message.id, message.from_user.first_name, callback_prefix="vote_channel"
     )
 
     memes_thread_message = bot.copy_message(
@@ -49,7 +52,7 @@ def process_meme(
         message_thread_id=memes_thread_id,
         message_id=message.id,
         disable_notification=True,
-        reply_markup=markup,
+        reply_markup=markup_inner,
     )
 
     flood_thread_message = bot.copy_message(
@@ -58,7 +61,7 @@ def process_meme(
         message_thread_id=flood_thread_id,
         message_id=message.id,
         disable_notification=True,
-        reply_markup=markup,
+        reply_markup=markup_inner,
     )
 
     external_channel_message = bot.copy_message(
@@ -66,6 +69,7 @@ def process_meme(
         from_chat_id=message.chat.id,
         message_id=message.id,
         disable_notification=True,
+        reply_markup=markup_external_channel,
     )
 
     save_meme_to_db(
@@ -82,11 +86,11 @@ def process_meme(
         bot.edit_message_reply_markup(
             chat_id=message.chat.id,
             message_id=thread_message_id.message_id,
-            reply_markup=markup,
+            reply_markup=markup_inner,
         )
 
     bot.edit_message_reply_markup(
         chat_id=external_channel_chat_id,
         message_id=external_channel_message.message_id,
-        reply_markup=None,
+        reply_markup=markup_external_channel,
     )
