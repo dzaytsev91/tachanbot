@@ -26,11 +26,14 @@ def process_meme(
         duplicate_message_id = is_duplicate_by_hash(conn, image_hash)
         if duplicate_message_id:
             bot.delete_message(message.chat.id, message.id)
+            user_id = message.from_user.id
+            user_name = message.from_user.first_name
+            mention = "[" + user_name + "](tg://user?id=" + str(user_id) + ")"
             bot.send_message(
                 chat_id=message.chat.id,
                 message_thread_id=flood_thread_id,
-                text="@{} \nуже было https://t.me/c/{}/{}/{}".format(
-                    message.from_user.first_name,
+                text="{} уже [было](https://t.me/c/{}/{}/{})".format(
+                    mention,
                     str(memes_chat_id)[4:],
                     memes_thread_id,
                     duplicate_message_id,
