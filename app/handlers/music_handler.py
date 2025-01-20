@@ -74,12 +74,6 @@ def handle_audio_messages(bot, conn, message, flood_thread_id):
             music_message.id, author_name, callback_prefix="music_vote"
         )
 
-        bot.edit_message_reply_markup(
-            chat_id=music_message.chat.id,
-            message_id=music_message.id,
-            reply_markup=markup,
-        )
-
         flood_thread_message = bot.copy_message(
             chat_id=music_message.chat.id,
             from_chat_id=music_message.chat.id,
@@ -98,3 +92,10 @@ def handle_audio_messages(bot, conn, message, flood_thread_id):
             music_message.message_id,
         )
         os.remove(new_filename)
+
+        for thread_message_id in [music_message, flood_thread_message]:
+            bot.edit_message_reply_markup(
+                chat_id=message.chat.id,
+                message_id=thread_message_id.message_id,
+                reply_markup=markup,
+            )
