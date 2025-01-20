@@ -45,7 +45,7 @@ def vote_pressed(call: telebot.types.CallbackQuery):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music_vote"))
 def music_vote_pressed(call: telebot.types.CallbackQuery):
-    music_vote_process(bot, call, conn, channel_chat_id)
+    music_vote_process(bot, call, conn, memes_chat_link_id)
 
 
 @bot.message_handler(commands=["myaml"])
