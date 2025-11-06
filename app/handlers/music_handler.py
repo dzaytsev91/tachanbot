@@ -10,6 +10,11 @@ from app.utils.markup import generate_markup
 
 log = logging.getLogger(__name__)
 
+# Platform-specific user agents
+USER_AGENTS = {
+    'default': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+}
+
 ydl_opts = {
     "format": "bestaudio/best",
     "retries": 5,
@@ -20,6 +25,14 @@ ydl_opts = {
             "preferredquality": "192",
         }
     ],
+    'noplaylist': True,
+    'quiet': True,
+    'no_warnings': False,
+    'merge_output_format': 'mp4',
+    'http_headers': {'User-Agent': USER_AGENTS['default']},
+    'extractor_retries': 3,
+    'fragment_retries': 3,
+    'ignoreerrors': False,
 }
 
 youtube_re = r"http(?:s?)://(?:www\.)?youtu(?:be\.com/watch\?v=|\.be/)([\w\-\_]*)(&(amp;)?‌​[\w\?‌​=]*)?"
@@ -50,6 +63,14 @@ def handle_audio_messages(bot, conn, message, flood_thread_id):
                 )
                 return
             log.info("video link: {},  duration: {}".format(youtube_link, info.get("duration", 0)))
+            if info.get('availability') == 'subscriber_only':
+                bot.delete_message(message.chat.id, temp_msg.id)
+                bot.edit_message_text(
+                    chat_id=message.chat_id,
+                    message_thread_id=message.message_thread_id,
+                    text="Это видео только для подписчиков. Бот не может его скачать без авторизации."
+                )
+                return
             if info.get("duration", 1000) > 600:
                 bot.delete_message(message.chat.id, temp_msg.id)
                 bot.send_message(
