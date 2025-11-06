@@ -19,8 +19,9 @@ COOKIES_FILE = 'cookies.txt'
 cookies_available = os.path.exists(COOKIES_FILE)
 
 ydl_opts = {
-    "format": "bestaudio/best",
-    "retries": 10,  # Increased retries
+    # Use format selection that works better with signature issues
+    "format": "bestaudio[ext=m4a]/bestaudio/best",
+    "retries": 10,
     "postprocessors": [
         {
             "key": "FFmpegExtractAudio",
@@ -29,22 +30,39 @@ ydl_opts = {
         }
     ],
     'noplaylist': True,
-    'quiet': True,
+    'quiet': False,
     'no_warnings': False,
-    'merge_output_format': 'mp4',
     'http_headers': {
-        'User-Agent': USER_AGENTS['default'],
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-us,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
         'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
     },
     'extractor_retries': 5,
-    'fragment_retries': 5,
+    'fragment_retries': 10,
     'ignoreerrors': False,
-    'cookiefile': COOKIES_FILE if cookies_available else None,
-    'age_limit': 0,
+    'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
+
+    # Critical options for signature extraction issues
     'extract_flat': False,
+    'ignore_no_formats_error': True,
+    'allow_unplayable_formats': False,
+
+    # Throttle to avoid rate limiting
+    'ratelimit': 1000000,
+    'throttledratelimit': 1000000,
+
+    # External downloader as fallback
+    'external_downloader': 'aria2c',
+    'external_downloader_args': ['--max-connection-per-server=16', '--min-split-size=1M'],
 }
 
 youtube_re = r"http(?:s?)://(?:www\.)?youtu(?:be\.com/watch\?v=|\.be/)([\w\-\_]*)(&(amp;)?‌​[\w\?‌​=]*)?"
