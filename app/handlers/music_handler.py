@@ -19,8 +19,10 @@ COOKIES_FILE = 'cookies.txt'
 cookies_available = os.path.exists(COOKIES_FILE)
 
 ydl_opts = {
-    # Use format selection that works better with signature issues
-    "format": "bestaudio[ext=m4a]/bestaudio/best",
+    # Try different audio format combinations
+    "format": "bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best",
+    # Alternative: specify exact format codes
+    # "format": "140/251/250/249",
     "retries": 10,
     "postprocessors": [
         {
@@ -32,37 +34,41 @@ ydl_opts = {
     'noplaylist': True,
     'quiet': False,
     'no_warnings': False,
+
+    # Enhanced headers specifically for audio streams
     'http_headers': {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept': '*/*',
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
+        'Range': 'bytes=0-',
+        'Referer': 'https://www.youtube.com/',
+        'Origin': 'https://www.youtube.com',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
         'DNT': '1',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Cache-Control': 'max-age=0',
     },
+
     'extractor_retries': 5,
     'fragment_retries': 10,
-    'ignoreerrors': False,
+    'skip_unavailable_fragments': True,
     'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
 
-    # Critical options for signature extraction issues
-    'extract_flat': False,
-    'ignore_no_formats_error': True,
-    'allow_unplayable_formats': False,
+    # Critical for YouTube
+    'youtube_include_dash_manifest': False,
+    'youtube_include_hls_manifest': False,
 
-    # Throttle to avoid rate limiting
-    'ratelimit': 1000000,
-    'throttledratelimit': 1000000,
-
-    # External downloader as fallback
+    # Use external downloader
     'external_downloader': 'aria2c',
-    'external_downloader_args': ['--max-connection-per-server=16', '--min-split-size=1M'],
+    'external_downloader_args': [
+        '--max-connection-per-server=16',
+        '--split=16',
+        '--min-split-size=1M',
+        '--header=Accept: */*',
+        '--header=Accept-Language: en-US,en;q=0.9',
+        '--header=Sec-Fetch-Mode: cors',
+    ],
 }
 
 youtube_re = r"http(?:s?)://(?:www\.)?youtu(?:be\.com/watch\?v=|\.be/)([\w\-\_]*)(&(amp;)?‌​[\w\?‌​=]*)?"
