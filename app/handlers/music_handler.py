@@ -12,12 +12,15 @@ log = logging.getLogger(__name__)
 
 # Platform-specific user agents
 USER_AGENTS = {
-    'default': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+    "default": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
 }
+
+COOKIES_FILE = 'cookies.txt'
+cookies_available = os.path.exists(COOKIES_FILE)
 
 ydl_opts = {
     "format": "bestaudio/best",
-    "retries": 5,
+    "retries": 10,  # Increased retries
     "postprocessors": [
         {
             "key": "FFmpegExtractAudio",
@@ -29,10 +32,19 @@ ydl_opts = {
     'quiet': True,
     'no_warnings': False,
     'merge_output_format': 'mp4',
-    'http_headers': {'User-Agent': USER_AGENTS['default']},
-    'extractor_retries': 3,
-    'fragment_retries': 3,
+    'http_headers': {
+        'User-Agent': USER_AGENTS['default'],
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-us,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'Connection': 'keep-alive',
+    },
+    'extractor_retries': 5,
+    'fragment_retries': 5,
     'ignoreerrors': False,
+    'cookiefile': COOKIES_FILE if cookies_available else None,
+    'age_limit': 0,
+    'extract_flat': False,
 }
 
 youtube_re = r"http(?:s?)://(?:www\.)?youtu(?:be\.com/watch\?v=|\.be/)([\w\-\_]*)(&(amp;)?‌​[\w\?‌​=]*)?"
@@ -45,78 +57,138 @@ def handle_audio_messages(bot, conn, message, flood_thread_id):
         youtube_link = re.search(youtube_re, message.text)[0]
         author_name = message.from_user.first_name
         author_id = message.from_user.id
+
         bot.delete_message(message.chat.id, message.id)
         temp_msg = bot.send_message(
             message.chat.id,
             text="Downloading song 🎶",
             message_thread_id=message.message_thread_id,
         )
-        with YoutubeDL(ydl_opts) as ydl:
-            try:
-                info = ydl.extract_info(youtube_link, download=False)
-            except Exception as err:
-                bot.delete_message(message.chat.id, temp_msg.id)
-                bot.send_message(
+
+        new_filename = None
+        try:
+            # Check if cookies are available and log it
+            if os.path.exists(COOKIES_FILE):
+                log.info("Using cookies for YouTube download")
+            else:
+                log.warning("No cookies file found, downloading without authentication")
+
+            with YoutubeDL(ydl_opts) as ydl:
+                try:
+                    # First, get info without downloading
+                    info = ydl.extract_info(youtube_link, download=False)
+                except Exception as err:
+                    bot.delete_message(message.chat.id, temp_msg.id)
+                    error_msg = f"Error getting video info: {str(err)}"
+                    if "Sign in to confirm you're not a bot" in str(err):
+                        error_msg += "\n\nYouTube is requiring authentication. Please provide cookies.txt file."
+                    bot.send_message(
+                        message.chat.id,
+                        message_thread_id=message.message_thread_id,
+                        text=error_msg,
+                    )
+                    return
+
+                log.info(
+                    "video link: {}, duration: {}".format(
+                        youtube_link, info.get("duration", 0)
+                    )
+                )
+
+                # Check video restrictions
+                if info.get("availability") == "subscriber_only":
+                    bot.delete_message(message.chat.id, temp_msg.id)
+                    bot.send_message(
+                        message.chat.id,
+                        message_thread_id=message.message_thread_id,
+                        text="Это видео только для подписчиков. Бот не может его скачать без авторизации.",
+                    )
+                    return
+
+                if info.get("duration", 1000) > 600:
+                    bot.delete_message(message.chat.id, temp_msg.id)
+                    bot.send_message(
+                        message.chat.id,
+                        message_thread_id=message.message_thread_id,
+                        text="Видео длинее 10 минут не поддерживается",
+                    )
+                    return
+
+                # Now download with retry
+                try:
+                    info = ydl.extract_info(youtube_link, download=True)
+                    filename = ydl.prepare_filename(info)
+                    new_filename = str(Path(filename).with_suffix(".mp3"))
+
+                    # Verify file exists and has content
+                    if not os.path.exists(new_filename):
+                        raise FileNotFoundError("Downloaded file not found")
+
+                    if os.path.getsize(new_filename) == 0:
+                        raise ValueError("Downloaded file is empty")
+
+                except Exception as download_err:
+                    bot.delete_message(message.chat.id, temp_msg.id)
+                    error_msg = f"Download failed: {str(download_err)}"
+                    if "403" in str(download_err):
+                        error_msg += (
+                            "\n\nAccess denied by YouTube. Try adding valid cookies."
+                        )
+                    bot.send_message(
+                        message.chat.id,
+                        message_thread_id=message.message_thread_id,
+                        text=error_msg,
+                    )
+                    return
+
+            # Send the audio file
+            bot.delete_message(message.chat.id, temp_msg.id)
+            with open(new_filename, "rb") as audio_file:
+                music_message = bot.send_audio(
                     message.chat.id,
+                    audio=audio_file,
                     message_thread_id=message.message_thread_id,
-                    text=err,
+                    caption=author_name,
+                    title=info.get("title", "Unknown Title")[
+                        :64
+                    ],  # Telegram title limit
+                    performer=info.get("uploader", "Unknown Artist")[:64],
                 )
-                return
-            log.info("video link: {},  duration: {}".format(youtube_link, info.get("duration", 0)))
-            if info.get('availability') == 'subscriber_only':
-                bot.delete_message(message.chat.id, temp_msg.id)
-                bot.edit_message_text(
-                    chat_id=message.chat_id,
-                    message_thread_id=message.message_thread_id,
-                    text="Это видео только для подписчиков. Бот не может его скачать без авторизации."
-                )
-                return
-            if info.get("duration", 1000) > 600:
-                bot.delete_message(message.chat.id, temp_msg.id)
-                bot.send_message(
-                    message.chat.id,
-                    message_thread_id=message.message_thread_id,
-                    text="Видео длинее 10 минут не поддерживается",
-                )
-                return
-            info = ydl.extract_info(youtube_link, download=True)
-            filename = ydl.prepare_filename(info)
-            new_filename = str(Path(filename).with_suffix(".mp3"))
 
-        bot.delete_message(message.chat.id, temp_msg.id)
-        music_message = bot.send_audio(
-            message.chat.id,
-            audio=open(new_filename, "rb"),
-            message_thread_id=message.message_thread_id,
-            caption=message.from_user.first_name,
-        )
+            markup = generate_markup(
+                music_message.id, author_name, callback_prefix="music_vote"
+            )
 
-        markup = generate_markup(
-            music_message.id, author_name, callback_prefix="music_vote"
-        )
-
-        flood_thread_message = bot.copy_message(
-            chat_id=music_message.chat.id,
-            from_chat_id=music_message.chat.id,
-            message_thread_id=flood_thread_id,
-            message_id=music_message.id,
-            disable_notification=True,
-            reply_markup=markup,
-        )
-
-        save_music_to_db(
-            music_message,
-            conn,
-            author_name,
-            author_id,
-            flood_thread_message.message_id,
-            music_message.message_id,
-        )
-        os.remove(new_filename)
-
-        for thread_message_id in [music_message, flood_thread_message]:
-            bot.edit_message_reply_markup(
-                chat_id=message.chat.id,
-                message_id=thread_message_id.message_id,
+            flood_thread_message = bot.copy_message(
+                chat_id=music_message.chat.id,
+                from_chat_id=music_message.chat.id,
+                message_thread_id=flood_thread_id,
+                message_id=music_message.id,
+                disable_notification=True,
                 reply_markup=markup,
             )
+
+            save_music_to_db(
+                music_message,
+                conn,
+                author_name,
+                author_id,
+                flood_thread_message.message_id,
+                music_message.message_id,
+            )
+
+        except Exception as e:
+            log.error(f"Unexpected error: {str(e)}")
+            bot.delete_message(message.chat.id, temp_msg.id)
+            bot.send_message(
+                message.chat.id,
+                message_thread_id=message.message_thread_id,
+                text="Произошла ошибка при обработке видео",
+            )
+        finally:
+            # Clean up downloaded file
+            if new_filename and os.path.exists(new_filename):
+                try:
+                    os.remove(new_filename)
+                except Exception as cleanup_err:
+                    log.error(f"Error cleaning up file: {cleanup_err}")

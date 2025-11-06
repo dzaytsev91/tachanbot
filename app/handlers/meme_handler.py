@@ -9,13 +9,13 @@ from app.utils.markup import generate_markup
 
 
 def process_meme(
-        bot,
-        conn,
-        message,
-        memes_thread_id,
-        flood_thread_id,
-        external_channel_chat_id,
-        memes_chat_id,
+    bot,
+    conn,
+    message,
+    memes_thread_id,
+    flood_thread_id,
+    external_channel_chat_id,
+    memes_chat_id,
 ):
     image_hash = ""
     if message.photo:

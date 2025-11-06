@@ -55,7 +55,8 @@ def main():
                     bot.send_message(
                         memes_chat_id,
                         "Чествуем новых админов! [{}](tg://user?id={})".format(
-                            username, user_id,
+                            username,
+                            user_id,
                             parse_mode="Markdown",
                         ),
                     )
