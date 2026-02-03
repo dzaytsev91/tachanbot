@@ -23,4 +23,7 @@ def init_db(db_name: str):
     conn.execute(
         "CREATE TABLE IF NOT EXISTS music_posts (id integer PRIMARY KEY, up_votes int, down_votes int, created_at timestamp,message_id int, user_id int, username string, old_hat_votes int, flood_thread_message_id int, music_thread_message_id int);"
     )
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS dank_boss_titles (user_id int PRIMARY KEY, old_title string, assigned_at timestamp);"
+    )
     return conn

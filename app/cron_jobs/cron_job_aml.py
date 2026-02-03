@@ -15,6 +15,53 @@ db_path = os.path.join(
     os.path.abspath(__file__).rsplit(os.sep, maxsplit=3)[0], "memes.db"
 )
 conn = sqlite3.connect(db_path, check_same_thread=False)
+conn.execute(
+    "CREATE TABLE IF NOT EXISTS dank_boss_titles (user_id int PRIMARY KEY, old_title string, assigned_at timestamp);"
+)
+
+
+def restore_previous_boss_title(new_boss_user_id):
+    rows = conn.execute("SELECT user_id, old_title FROM dank_boss_titles").fetchall()
+    if not rows:
+        return
+    for previous_boss_id, old_title in rows:
+        if new_boss_user_id and previous_boss_id == new_boss_user_id:
+            continue
+        try:
+            member = bot.get_chat_member(memes_chat_id, previous_boss_id)
+            if member.status in ("administrator", "creator"):
+                bot.set_chat_administrator_custom_title(
+                    memes_chat_id, previous_boss_id, old_title or ""
+                )
+        except Exception as err:
+            print(err)
+        finally:
+            conn.execute(
+                "DELETE FROM dank_boss_titles WHERE user_id = ?",
+                (previous_boss_id,),
+            )
+            conn.commit()
+
+
+def save_boss_old_title(user_id):
+    row = conn.execute(
+        "SELECT user_id FROM dank_boss_titles WHERE user_id = ?",
+        (user_id,),
+    ).fetchone()
+    if row:
+        return False
+    try:
+        member = bot.get_chat_member(memes_chat_id, user_id)
+        old_title = member.custom_title or ""
+    except Exception as err:
+        print(err)
+        old_title = ""
+    conn.execute(
+        "INSERT OR REPLACE INTO dank_boss_titles (user_id, old_title, assigned_at) VALUES(?, ?, ?);",
+        (user_id, old_title, date.today()),
+    )
+    conn.commit()
+    return True
 
 
 def main():
@@ -57,7 +104,6 @@ def main():
                         "Чествуем новых админов! [{}](tg://user?id={})".format(
                             username,
                             user_id,
-                            parse_mode="Markdown",
                         ),
                     )
             except Exception as err:
@@ -91,6 +137,7 @@ def main():
     )
     if not gold_user_id:
         return
+    saved_title = False
     try:
         if gold_user_id == chat_creator:
             bot.send_message(
@@ -102,15 +149,23 @@ def main():
                 parse_mode="Markdown",
             )
         else:
+            restore_previous_boss_title(gold_user_id)
+            saved_title = save_boss_old_title(gold_user_id)
             bot.set_chat_administrator_custom_title(
                 chat_id=memes_chat_id,
                 user_id=gold_user_id,
                 custom_title="Dank boss",
             )
     except Exception as err:
+        if gold_user_id and gold_user_id != chat_creator and saved_title:
+            conn.execute(
+                "DELETE FROM dank_boss_titles WHERE user_id = ?",
+                (gold_user_id,),
+            )
+            conn.commit()
         bot.send_message(
             memes_chat_id,
-            "Опять криворукий разраб меня писал, ошибка, error: {}".format(err),
+            "Ошибка, error: {}".format(err),
             message_thread_id=flood_thread_id,
             parse_mode="Markdown",
         )
