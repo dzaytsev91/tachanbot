@@ -16,36 +16,25 @@ blocks:
         - name: Build и test в Docker
           commands:
             - 'docker build -t my-app:$SEMAPHORE_WORKFLOW_ID .'
-  - name: Проверка переменных Semaphore Registry
+  - name: Публикация Docker образа в Docker Hub
     task:
+      secrets:
+        - name: DOCKER_LOGIN
+        - name: DOCKER_PASS
       jobs:
-        - name: Проверка переменных
+        - name: Push в Docker Hub
           commands:
-            - 'echo "SEMAPHORE_REGISTRY_URL: $SEMAPHORE_REGISTRY_URL"'
-            - 'echo "SEMAPHORE_REGISTRY_USERNAME: $SEMAPHORE_REGISTRY_USERNAME"'
-            - 'echo "SEMAPHORE_REGISTRY_PASSWORD: $SEMAPHORE_REGISTRY_PASSWORD"'
-            - 'test -n "$SEMAPHORE_REGISTRY_URL" || { echo "SEMAPHORE_REGISTRY_URL is empty"; exit 1; }'
-            - 'test -n "$SEMAPHORE_REGISTRY_USERNAME" || { echo "SEMAPHORE_REGISTRY_USERNAME is empty"; exit 1; }'
-            - 'test -n "$SEMAPHORE_REGISTRY_PASSWORD" || { echo "SEMAPHORE_REGISTRY_PASSWORD is empty"; exit 1; }'
-            - echo "✅ Все переменные для Semaphore Registry доступны"
-  - name: Публикация Docker образа в Semaphore Registry
-    task:
-      jobs:
-        - name: Push в Semaphore Registry
-          commands:
-            - mkdir -p ~/.docker
-            - 'echo "{\"auths\":{\"$SEMAPHORE_REGISTRY_URL\":{\"auth\":\"$(echo -n $SEMAPHORE_REGISTRY_USERNAME:$SEMAPHORE_REGISTRY_PASSWORD | base64)\"}}}" > ~/.docker/config.json'
-            - cat ~/.docker/config.json
-            - 'docker pull $SEMAPHORE_REGISTRY_URL/my-app:latest || true'
-            - 'docker build --cache-from $SEMAPHORE_REGISTRY_URL/my-app:latest -t $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID .'
-            - 'docker tag $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID $SEMAPHORE_REGISTRY_URL/my-app:latest'
-            - 'docker push $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID'
-            - 'docker push $SEMAPHORE_REGISTRY_URL/my-app:latest'
-            - 'echo "✅ Образ успешно загружен: $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID"'
-            - 'echo "✅ Образ успешно загружен: $SEMAPHORE_REGISTRY_URL/my-app:latest"'
+            - echo $DOCKER_PASS | docker login -u $DOCKER_LOGIN --password-stdin
+            - 'docker pull $DOCKER_LOGIN/my-app:latest || true'
+            - 'docker build --cache-from $DOCKER_LOGIN/my-app:latest -t $DOCKER_LOGIN/my-app:$SEMAPHORE_WORKFLOW_ID .'
+            - 'docker tag $DOCKER_LOGIN/my-app:$SEMAPHORE_WORKFLOW_ID $DOCKER_LOGIN/my-app:latest'
+            - 'docker push $DOCKER_LOGIN/my-app:$SEMAPHORE_WORKFLOW_ID'
+            - 'docker push $DOCKER_LOGIN/my-app:latest'
+            - 'echo "✅ Образ успешно загружен: $DOCKER_LOGIN/my-app:$SEMAPHORE_WORKFLOW_ID"'
+            - 'echo "✅ Образ успешно загружен: $DOCKER_LOGIN/my-app:latest"'
   - name: (Опционально) Деплой
     task:
       jobs:
         - name: Деплой приложения
           commands:
-            - "echo \"\U0001F680 Деплой образа $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID\""
+            - "echo \"\U0001F680 Деплой образа $DOCKER_LOGIN/my-app:$SEMAPHORE_WORKFLOW_ID\""
