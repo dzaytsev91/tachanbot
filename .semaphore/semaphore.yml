@@ -34,4 +34,4 @@ blocks:
       jobs:
         - name: Деплой приложения
           commands:
-            - 'echo "Деплой образа $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID"'
+            - echo "Деплой образа"
