@@ -16,6 +16,19 @@ blocks:
         - name: Build и test в Docker
           commands:
             - 'docker build -t my-app:$SEMAPHORE_WORKFLOW_ID .'
+  - name: Push в Docker Hub
+    secrets:
+      - name: DOCKER_LOGIN
+      - name: DOCKER_PASS
+    commands:
+      - |
+        if [ -z "$DOCKER_LOGIN" ] || [ -z "$DOCKER_PASS" ]; then
+          echo "❌ DOCKER_LOGIN или DOCKER_PASS пустые — проверь секреты в Semaphore"
+          exit 1
+        fi
+      - echo "$DOCKER_PASS" | docker login -u "$DOCKER_LOGIN" --password-stdin
+    task:
+      jobs: []
   - name: Публикация Docker образа в Docker Hub
     task:
       secrets:
