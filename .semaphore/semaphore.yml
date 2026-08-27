@@ -21,9 +21,9 @@ blocks:
       jobs:
         - name: Проверка переменных
           commands:
-            - echo "SEMAPHORE_REGISTRY_URL: $SEMAPHORE_REGISTRY_URL"
-            - echo "SEMAPHORE_REGISTRY_USERNAME: $SEMAPHORE_REGISTRY_USERNAME"
-            - echo "SEMAPHORE_REGISTRY_PASSWORD: $SEMAPHORE_REGISTRY_PASSWORD"
+            - 'echo "SEMAPHORE_REGISTRY_URL: $SEMAPHORE_REGISTRY_URL"'
+            - 'echo "SEMAPHORE_REGISTRY_USERNAME: $SEMAPHORE_REGISTRY_USERNAME"'
+            - 'echo "SEMAPHORE_REGISTRY_PASSWORD: $SEMAPHORE_REGISTRY_PASSWORD"'
             - 'test -n "$SEMAPHORE_REGISTRY_URL" || { echo "SEMAPHORE_REGISTRY_URL is empty"; exit 1; }'
             - 'test -n "$SEMAPHORE_REGISTRY_USERNAME" || { echo "SEMAPHORE_REGISTRY_USERNAME is empty"; exit 1; }'
             - 'test -n "$SEMAPHORE_REGISTRY_PASSWORD" || { echo "SEMAPHORE_REGISTRY_PASSWORD is empty"; exit 1; }'
@@ -48,4 +48,4 @@ blocks:
       jobs:
         - name: Деплой приложения
           commands:
-            - 'echo "Деплой образа $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID"'
+            - "echo \"\U0001F680 Деплой образа $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID\""
