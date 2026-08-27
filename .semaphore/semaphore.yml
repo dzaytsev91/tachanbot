@@ -1,42 +1,50 @@
 version: v1.0
-name: "\U0001F31F Fan-In/Fan-Out Pipeline"
+name: CI/CD пайплайн
 agent:
   machine:
-    type: a2-standard-4
-    os_image: macos-xcode16
-  containers:
-    - name: main
-      image: 'registry.semaphoreci.com/node:20'
-    - name: postgres
-      image: 'registry.semaphoreci.com/postgres:17'
-    - name: redis
-      image: 'registry.semaphoreci.com/redis:7.0'
-fail_fast:
-  stop:
-    when: branch != 'main'
-auto_cancel:
-  running:
-    when: branch != 'main'
-  queued:
-    when: branch = 'main'
+    type: e1-standard-2
+    os_image: ubuntu2204
+global_job_config:
+  prologue:
+    commands:
+      - checkout
+      - cache restore python-deps-$(checksum requirements.txt)-$(checksum requirements.dev.txt)
 blocks:
-  - name: "\U0001F9EA Unit Tests"
-    dependencies: []
+  - name: Установка зависимостей
     task:
       jobs:
-        - name: "\U0001F7E2 Run Unit Tests"
+        - name: Setup и кеширование
           commands:
-            - echo "Running unit tests in container..."
-            - echo "Unit tests passed successfully!"
+            - python3 -m venv venv
+            - venv/bin/pip install -r requirements.txt
+            - venv/bin/pip install -r requirements.dev.txt
+            - cache store python-deps-$(checksum requirements.txt)-$(checksum requirements.dev.txt) venv
+  - name: Качество кода и тесты
+    task:
+      jobs:
+        - name: Format и Test
+          commands:
+            - source venv/bin/activate
+            - make format
+            - make pre-commit || true
             - make test
-  - name: "\U0001F4E6 Build"
-    dependencies:
-      - "\U0001F9EA Unit Tests"
+  - name: Docker сборка и тестирование
     task:
       jobs:
-        - name: "\U0001F528 Build Production"
+        - name: Build и test в Docker
           commands:
-            - echo "Building production Docker image..."
-            - echo "Running multi-stage build..."
-            - docker build -t test .
-            - echo "Build completed successfully!"
+            - 'docker build -t my-app:$SEMAPHORE_WORKFLOW_ID .'
+            - 'docker run --rm my-app:$SEMAPHORE_WORKFLOW_ID make test'
+  - name: Публикация Docker образа
+    task:
+      secrets:
+        - name: dockerhub-credentials
+      jobs:
+        - name: Push в Docker Hub
+          commands:
+            - 'echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin'
+            - 'docker pull ${DOCKER_USERNAME}/my-app:latest || true'
+            - 'docker build --cache-from ${DOCKER_USERNAME}/my-app:latest -t ${DOCKER_USERNAME}/my-app:$SEMAPHORE_WORKFLOW_ID .'
+            - 'docker tag ${DOCKER_USERNAME}/my-app:$SEMAPHORE_WORKFLOW_ID ${DOCKER_USERNAME}/my-app:latest'
+            - 'docker push ${DOCKER_USERNAME}/my-app:$SEMAPHORE_WORKFLOW_ID'
+            - 'docker push ${DOCKER_USERNAME}/my-app:latest'
