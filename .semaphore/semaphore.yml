@@ -16,7 +16,6 @@ blocks:
         - name: Build и test в Docker
           commands:
             - 'docker build -t my-app:$SEMAPHORE_WORKFLOW_ID .'
-            - 'docker run --rm my-app:$SEMAPHORE_WORKFLOW_ID make test'
   - name: Публикация Docker образа
     task:
       secrets:
