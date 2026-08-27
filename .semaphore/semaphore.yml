@@ -21,7 +21,7 @@ blocks:
       jobs:
         - name: Push в Semaphore Registry
           commands:
-            - docker login -u $SEMAPHORE_REGISTRY_USERNAME -p $SEMAPHORE_REGISTRY_PASSWORD $SEMAPHORE_REGISTRY_URL
+            - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login -u $SEMAPHORE_REGISTRY_USERNAME --password-stdin $SEMAPHORE_REGISTRY_URL
             - 'docker pull $SEMAPHORE_REGISTRY_URL/my-app:latest || true'
             - 'docker build --cache-from $SEMAPHORE_REGISTRY_URL/my-app:latest -t $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID .'
             - 'docker tag $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID $SEMAPHORE_REGISTRY_URL/my-app:latest'
