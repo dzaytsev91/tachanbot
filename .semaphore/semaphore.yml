@@ -19,17 +19,11 @@ blocks:
   - name: Публикация Docker образа в Docker Hub
     task:
       secrets:
-        - name: DOCKER_LOGIN
-        - name: DOCKER_PASS
+        - name: dockerhub
       jobs:
         - name: Push в Docker Hub
           commands:
-            - |
-              if [ -z "$DOCKER_LOGIN" ] || [ -z "$DOCKER_PASS" ]; then
-                echo "❌ Секреты DOCKER_LOGIN / DOCKER_PASS не найдены или пусты"
-                exit 1
-              fi
-            - echo "$DOCKER_PASS" | docker login -u "$DOCKER_LOGIN" --password-stdin
+            - echo $DOCKER_PASS | docker login -u $DOCKER_LOGIN --password-stdin
             - 'docker pull $DOCKER_LOGIN/my-app:latest || true'
             - 'docker build --cache-from $DOCKER_LOGIN/my-app:latest -t $DOCKER_LOGIN/my-app:$SEMAPHORE_WORKFLOW_ID .'
             - 'docker tag $DOCKER_LOGIN/my-app:$SEMAPHORE_WORKFLOW_ID $DOCKER_LOGIN/my-app:latest'
