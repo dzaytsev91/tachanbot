@@ -9,19 +9,10 @@ global_job_config:
     commands:
       - checkout
 blocks:
-  - name: Docker сборка и тестирование
+  - name: 'Build, test и push'
     task:
       jobs:
-        - name: Build и test
-          commands:
-            - 'docker build -t "my-app:$SEMAPHORE_WORKFLOW_ID" .'
-            - 'docker run --rm "my-app:$SEMAPHORE_WORKFLOW_ID" pytest'
-  - name: Публикация Docker образа
-    dependencies:
-      - Docker сборка и тестирование
-    task:
-      jobs:
-        - name: Push в Semaphore Registry
+        - name: Docker CI/CD
           commands:
             - 'test -n "$SEMAPHORE_REGISTRY_USERNAME" || { echo "SEMAPHORE_REGISTRY_USERNAME is empty"; exit 1; }'
             - 'test -n "$SEMAPHORE_REGISTRY_PASSWORD" || { echo "SEMAPHORE_REGISTRY_PASSWORD is empty"; exit 1; }'
@@ -29,18 +20,10 @@ blocks:
             - echo "$SEMAPHORE_REGISTRY_PASSWORD" | docker login "$SEMAPHORE_REGISTRY_URL" -u "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin
             - 'docker pull "$SEMAPHORE_REGISTRY_URL/my-app:latest" || true'
             - 'docker build --cache-from "$SEMAPHORE_REGISTRY_URL/my-app:latest" -t "$SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID" .'
+            - 'docker run --rm "$SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID" pytest'
             - 'docker tag "$SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID" "$SEMAPHORE_REGISTRY_URL/my-app:latest"'
             - 'docker push "$SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID"'
             - 'docker push "$SEMAPHORE_REGISTRY_URL/my-app:latest"'
-            - 'echo "Successfully pushed:"'
+            - 'echo "Image pushed:"'
             - 'echo "$SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID"'
             - 'echo "$SEMAPHORE_REGISTRY_URL/my-app:latest"'
-  - name: Deploy
-    dependencies:
-      - Публикация Docker образа
-    task:
-      jobs:
-        - name: Deploy application
-          commands:
-            - 'echo "Deploy image:"'
-            - 'echo "$SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID"'
