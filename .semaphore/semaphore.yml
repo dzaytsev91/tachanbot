@@ -8,30 +8,21 @@ global_job_config:
   prologue:
     commands:
       - checkout
-      - cache restore python-deps-$(checksum requirements.txt)-$(checksum requirements.dev.txt)
 blocks:
   - name: Docker сборка и тестирование
     task:
       jobs:
-        - name: Build и test в Docker
+        - name: Build и test
           commands:
             - 'docker build -t my-app:$SEMAPHORE_WORKFLOW_ID .'
-  - name: Публикация Docker образа в Semaphore Registry
+  - name: Публикация Docker образа
     task:
       jobs:
-        - name: Push в Semaphore Registry
+        - name: Push
           commands:
-            - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login -u $SEMAPHORE_REGISTRY_USERNAME --password-stdin $SEMAPHORE_REGISTRY_URL
-            - 'docker pull $SEMAPHORE_REGISTRY_URL/my-app:latest || true'
-            - 'docker build --cache-from $SEMAPHORE_REGISTRY_URL/my-app:latest -t $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID .'
-            - 'docker tag $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID $SEMAPHORE_REGISTRY_URL/my-app:latest'
-            - 'docker push $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID'
-            - 'docker push $SEMAPHORE_REGISTRY_URL/my-app:latest'
-            - 'echo "Образ успешно загружен: $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID"'
-            - 'echo "Образ успешно загружен: $SEMAPHORE_REGISTRY_URL/my-app:latest"'
-  - name: (Опционально) Деплой
-    task:
-      jobs:
-        - name: Деплой приложения
-          commands:
-            - 'echo "Деплой образа $SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID"'
+            - test -n "$SEMAPHORE_REGISTRY_PASSWORD"
+            - echo "$SEMAPHORE_REGISTRY_PASSWORD" | docker login "$SEMAPHORE_REGISTRY_URL" -u "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin
+            - 'docker tag my-app:$SEMAPHORE_WORKFLOW_ID "$SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID"'
+            - 'docker tag my-app:$SEMAPHORE_WORKFLOW_ID "$SEMAPHORE_REGISTRY_URL/my-app:latest"'
+            - 'docker push "$SEMAPHORE_REGISTRY_URL/my-app:$SEMAPHORE_WORKFLOW_ID"'
+            - 'docker push "$SEMAPHORE_REGISTRY_URL/my-app:latest"'
