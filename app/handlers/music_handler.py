@@ -15,14 +15,15 @@ USER_AGENTS = {
     "default": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
 }
 
-COOKIES_FILE = 'cookies.txt'
+COOKIES_FILE = "cookies.txt"
 cookies_available = os.path.exists(COOKIES_FILE)
 
 ydl_opts = {
-    # Try different audio format combinations
-    "format": "bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best",
-    # Alternative: specify exact format codes
-    # "format": "140/251/250/249",
+    # Pick the best audio stream; FFmpegExtractAudio converts it to MP3 below.
+    # A plain "bestaudio/best" selector plus full DASH/HLS manifests is the most
+    # reliable setup — restricting formats (ext filters, disabled manifests) makes
+    # yt-dlp fail with "Requested format is not available" on many videos.
+    "format": "bestaudio/best",
     "retries": 10,
     "postprocessors": [
         {
@@ -31,43 +32,36 @@ ydl_opts = {
             "preferredquality": "192",
         }
     ],
-    'noplaylist': True,
-    'quiet': False,
-    'no_warnings': False,
-
+    "noplaylist": True,
+    "quiet": False,
+    "no_warnings": False,
     # Enhanced headers specifically for audio streams
-    'http_headers': {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': '*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Range': 'bytes=0-',
-        'Referer': 'https://www.youtube.com/',
-        'Origin': 'https://www.youtube.com',
-        'Sec-Fetch-Dest': 'empty',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-site',
-        'DNT': '1',
+    "http_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Range": "bytes=0-",
+        "Referer": "https://www.youtube.com/",
+        "Origin": "https://www.youtube.com",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-site",
+        "DNT": "1",
     },
-
-    'extractor_retries': 5,
-    'fragment_retries': 10,
-    'skip_unavailable_fragments': True,
-    'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
-
-    # Critical for YouTube
-    'youtube_include_dash_manifest': False,
-    'youtube_include_hls_manifest': False,
-
+    "extractor_retries": 5,
+    "fragment_retries": 10,
+    "skip_unavailable_fragments": True,
+    "cookiefile": "cookies.txt" if os.path.exists("cookies.txt") else None,
     # Use external downloader
-    'external_downloader': 'aria2c',
-    'external_downloader_args': [
-        '--max-connection-per-server=16',
-        '--split=16',
-        '--min-split-size=1M',
-        '--header=Accept: */*',
-        '--header=Accept-Language: en-US,en;q=0.9',
-        '--header=Sec-Fetch-Mode: cors',
+    "external_downloader": "aria2c",
+    "external_downloader_args": [
+        "--max-connection-per-server=16",
+        "--split=16",
+        "--min-split-size=1M",
+        "--header=Accept: */*",
+        "--header=Accept-Language: en-US,en;q=0.9",
+        "--header=Sec-Fetch-Mode: cors",
     ],
 }
 
