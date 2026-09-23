@@ -67,16 +67,3 @@ def process_meme(
         image_hash,
     )
     bot.delete_message(message.chat.id, message.id)
-
-    for thread_message_id in [memes_thread_message, flood_thread_message]:
-        bot.edit_message_reply_markup(
-            chat_id=message.chat.id,
-            message_id=thread_message_id.message_id,
-            reply_markup=markup_inner,
-        )
-
-    bot.edit_message_reply_markup(
-        chat_id=external_channel_chat_id,
-        message_id=external_channel_message.message_id,
-        reply_markup=markup_external_channel,
-    )
