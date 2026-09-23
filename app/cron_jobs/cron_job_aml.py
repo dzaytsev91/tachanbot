@@ -83,13 +83,14 @@ class TitleManager:
             return member.custom_title or ""
         except Exception:
             logger.exception("Failed to get custom title for user %d", user_id)
-            return ""
+            raise
 
     def restore_previous_titles(self, exclude_user_id: int | None = None):
         rows = self._conn.execute(
             "SELECT user_id, old_title FROM dank_boss_titles"
         ).fetchall()
 
+        failures: list[Exception] = []
         for user_id, old_title in rows:
             if user_id == exclude_user_id:
                 continue
@@ -99,13 +100,19 @@ class TitleManager:
                     self._bot.set_chat_administrator_custom_title(
                         self._chat_id, user_id, old_title or ""
                     )
-            except Exception:
+            except Exception as error:
                 logger.exception("Failed to restore title for user %d", user_id)
-            finally:
+                failures.append(error)
+            else:
                 self._conn.execute(
                     "DELETE FROM dank_boss_titles WHERE user_id = ?", (user_id,)
                 )
                 self._conn.commit()
+
+        if failures:
+            raise RuntimeError(
+                f"Failed to restore {len(failures)} previous title(s)"
+            ) from failures[0]
 
     def save_title(self, user_id: int) -> bool:
         existing = self._conn.execute(
@@ -121,10 +128,6 @@ class TitleManager:
         )
         self._conn.commit()
         return True
-
-    def rollback_save(self, user_id: int):
-        self._conn.execute("DELETE FROM dank_boss_titles WHERE user_id = ?", (user_id,))
-        self._conn.commit()
 
 
 class MemeRatingBot:
@@ -172,7 +175,7 @@ class MemeRatingBot:
 
     def _promote_to_admin(self, user_id: int, username: str):
         member = self._bot.get_chat_member(self._config.memes_chat_id, user_id)
-        if member.status == "administrator":
+        if member.status in ("administrator", "creator"):
             return
         self._bot.promote_chat_member(
             self._config.memes_chat_id,
@@ -202,18 +205,16 @@ class MemeRatingBot:
             return
 
         self._titles.restore_previous_titles(exclude_user_id=winner.user_id)
-        saved = self._titles.save_title(winner.user_id)
+        self._titles.save_title(winner.user_id)
         try:
             self._bot.set_chat_administrator_custom_title(
                 chat_id=self._config.memes_chat_id,
                 user_id=winner.user_id,
                 custom_title=BOSS_TITLE,
             )
-        except Exception as err:  # noqa: BLE001 - Telegram exposes several exception types
-            if saved:
-                self._titles.rollback_save(winner.user_id)
-            self._send_flood(f"Ошибка, error: {err}")
-            return
+        except Exception:
+            logger.exception("Failed to assign boss title to user %d", winner.user_id)
+            raise
 
         self._send_flood(
             f"Почет и уважение новому босу данка на эту неделю! "
@@ -239,6 +240,7 @@ class MemeRatingBot:
 
         ranked_lines: list[str] = []
         unranked_lines: list[str] = []
+        failures: list[Exception] = []
         reward_idx = 0
         winner: MemeStats | None = None
 
@@ -254,8 +256,9 @@ class MemeRatingBot:
                     winner = stats
                 try:
                     self._promote_to_admin(stats.user_id, stats.username)
-                except Exception:
+                except Exception as error:
                     logger.exception("Failed to promote user %d", stats.user_id)
+                    failures.append(error)
             else:
                 reward = CLOWN
             ranked_lines.append(self._format_user_line(stats, reward))
@@ -271,7 +274,15 @@ class MemeRatingBot:
         self._send_flood("\n".join(message_parts))
 
         if winner:
-            self._assign_boss_title(winner)
+            try:
+                self._assign_boss_title(winner)
+            except Exception as error:  # noqa: BLE001 - aggregate Telegram failures
+                failures.append(error)
+
+        if failures:
+            raise RuntimeError(
+                f"AML report completed with {len(failures)} Telegram failure(s)"
+            ) from failures[0]
 
     def close(self) -> None:
         if self._owns_connection:

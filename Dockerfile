@@ -14,7 +14,7 @@ COPY requirements.txt requirements.lock ./
 RUN pip install --no-cache-dir --requirement requirements.lock
 
 COPY --chown=bot:bot . .
-RUN mkdir --parents /data/backups && chown --recursive bot:bot /data
+RUN mkdir --parents /data/backups && chown --recursive bot:bot /app /data
 
 USER bot
 

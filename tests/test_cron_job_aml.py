@@ -353,7 +353,9 @@ class TestBossTitle(unittest.TestCase):
     def test_skips_chat_creator(self):
         rows = [(CHAT_CREATOR_ID, "creator", 10, 0, self.today)] * MINIMUM_MEMES
         _seed_memes(self.conn, rows)
+        self.mock_bot.get_chat_member.return_value = _make_member(status="creator")
         _run_main(self.conn, self.mock_bot, chat_creator_id=CHAT_CREATOR_ID)
+        self.mock_bot.promote_chat_member.assert_not_called()
         # Should NOT set "Dank boss" title.
         calls = self.mock_bot.set_chat_administrator_custom_title.call_args_list
         boss_calls = [
@@ -369,9 +371,8 @@ class TestBossTitle(unittest.TestCase):
             "Expected creator-skip message",
         )
 
-    def test_rollback_on_title_error(self):
-        """If setting the Dank boss title fails, the saved old title
-        should be rolled back from the DB."""
+    def test_preserves_old_title_on_assignment_error(self):
+        """An ambiguous Telegram failure must preserve recovery state."""
         rows = [(1, "alice", 10, 0, self.today)] * MINIMUM_MEMES
         _seed_memes(self.conn, rows)
 
@@ -385,14 +386,15 @@ class TestBossTitle(unittest.TestCase):
                 raise RuntimeError("API fail")
 
         self.mock_bot.set_chat_administrator_custom_title.side_effect = _side_effect
-        _run_main(self.conn, self.mock_bot)
+        with self.assertRaisesRegex(RuntimeError, "Telegram failure"):
+            _run_main(self.conn, self.mock_bot)
 
         row = self.conn.execute(
             "SELECT 1 FROM dank_boss_titles WHERE user_id = 1"
         ).fetchone()
-        self.assertIsNone(row, "Old title row should be rolled back after error")
+        self.assertIsNotNone(row, "Old title must remain available for recovery")
 
-    def test_error_message_on_title_failure(self):
+    def test_title_failure_propagates_to_job_runner(self):
         rows = [(1, "alice", 10, 0, self.today)] * MINIMUM_MEMES
         _seed_memes(self.conn, rows)
 
@@ -405,12 +407,41 @@ class TestBossTitle(unittest.TestCase):
                 raise RuntimeError("API fail")
 
         self.mock_bot.set_chat_administrator_custom_title.side_effect = _side_effect
-        _run_main(self.conn, self.mock_bot)
+        with self.assertRaisesRegex(RuntimeError, "Telegram failure"):
+            _run_main(self.conn, self.mock_bot)
 
-        texts = _collect_texts(self.mock_bot)
-        self.assertTrue(
-            any("Ошибка" in t or "error" in t.lower() for t in texts),
-            "Expected error message when title assignment fails",
+    def test_failed_previous_title_restore_keeps_recovery_row(self):
+        _seed_boss_titles(self.conn, [(99, "previous king", "2025-01-01")])
+        manager = mod.TitleManager(self.conn, self.mock_bot, CHAT_ID)
+        self.mock_bot.get_chat_member.side_effect = RuntimeError("API fail")
+
+        with self.assertRaisesRegex(RuntimeError, "Failed to restore 1"):
+            manager.restore_previous_titles()
+
+        self.assertEqual(
+            self.conn.execute(
+                "SELECT old_title FROM dank_boss_titles WHERE user_id=99"
+            ).fetchone(),
+            ("previous king",),
+        )
+
+    def test_failed_old_title_read_does_not_assign_new_title(self):
+        rows = [(1, "alice", 10, 0, self.today)] * MINIMUM_MEMES
+        _seed_memes(self.conn, rows)
+        admin = _make_member(status="administrator")
+        self.mock_bot.get_chat_member.side_effect = [admin, RuntimeError("API fail")]
+
+        with self.assertRaisesRegex(RuntimeError, "Telegram failure"):
+            _run_main(self.conn, self.mock_bot)
+
+        self.assertIsNone(
+            self.conn.execute(
+                "SELECT 1 FROM dank_boss_titles WHERE user_id=1"
+            ).fetchone()
+        )
+        calls = self.mock_bot.set_chat_administrator_custom_title.call_args_list
+        self.assertFalse(
+            any("Dank boss" in list(call.kwargs.values()) for call in calls)
         )
 
 

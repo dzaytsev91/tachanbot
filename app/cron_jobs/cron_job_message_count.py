@@ -21,24 +21,29 @@ def send_inactive_users(
     query = "SELECT u.user_id, u.username FROM users u LEFT JOIN user_messages um ON um.user_id=u.user_id AND um.created_at > ? WHERE um.message_id is NULL AND u.active=1"
     rows = conn.execute(query, (cutoff.isoformat(sep=" "),)).fetchall()
     msg = ["Список вуаеристов\n"]
+    failures: list[Exception] = []
     for row in rows:
         user_id, username = row
         try:
             user_data = bot.get_chat_member(chat_id, user_id)
-        except Exception:
+        except Exception as error:
             logger.exception("Failed to inspect chat member %d", user_id)
+            failures.append(error)
             continue
         if user_data.status == "administrator":
             continue
         msg.append(f"[{username}](tg://user?id={user_id}) {user_id}")
-    if len(msg) == 1:
-        return
-    bot.send_message(
-        chat_id,
-        "\n".join(msg),
-        message_thread_id=thread_id,
-        parse_mode="Markdown",
-    )
+    if len(msg) > 1:
+        bot.send_message(
+            chat_id,
+            "\n".join(msg),
+            message_thread_id=thread_id,
+            parse_mode="Markdown",
+        )
+    if failures:
+        raise RuntimeError(
+            f"Failed to inspect {len(failures)} inactive user(s)"
+        ) from failures[0]
 
 
 def main() -> None:

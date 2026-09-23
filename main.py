@@ -18,7 +18,7 @@ still_worthy = [43529628, 163181560, 678126582, 211291464, 374984530]
 
 
 def create_bot(config: AppConfig):
-    bot = telebot.TeleBot(config.bot_token, skip_pending=True)
+    bot = telebot.TeleBot(config.bot_token, skip_pending=True, num_threads=1)
     conn = init_db(config.db_path)
     bot.set_my_commands(
         [

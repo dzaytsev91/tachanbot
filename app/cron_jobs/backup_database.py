@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+import tempfile
 from datetime import datetime
+from fcntl import LOCK_EX, flock
 from pathlib import Path
 
 from app.config import AppConfig
@@ -24,26 +26,30 @@ def create_backup(
     destination_dir.mkdir(parents=True, exist_ok=True)
     timestamp = (now or local_now()).strftime("%Y%m%d-%H%M%S")
     destination = destination_dir / f"memes-{timestamp}.db"
-    temporary = destination.with_suffix(".db.tmp")
 
-    temporary.unlink(missing_ok=True)
-    try:
-        target = sqlite3.connect(temporary)
+    with (destination_dir / ".backup.lock").open("a+") as lock_file:
+        flock(lock_file, LOCK_EX)
+        with tempfile.NamedTemporaryFile(
+            dir=destination_dir, prefix=".memes-", suffix=".tmp", delete=False
+        ) as temporary_file:
+            temporary = Path(temporary_file.name)
         try:
-            source.backup(target)
-            result = target.execute("PRAGMA integrity_check").fetchone()
-            if result != ("ok",):
-                raise RuntimeError(f"SQLite integrity check failed: {result}")
-        finally:
-            target.close()
-    except (OSError, RuntimeError, sqlite3.Error):
-        temporary.unlink(missing_ok=True)
-        raise
+            target = sqlite3.connect(temporary)
+            try:
+                source.backup(target)
+                result = target.execute("PRAGMA integrity_check").fetchone()
+                if result != ("ok",):
+                    raise RuntimeError(f"SQLite integrity check failed: {result}")
+            finally:
+                target.close()
+        except (OSError, RuntimeError, sqlite3.Error):
+            temporary.unlink(missing_ok=True)
+            raise
 
-    temporary.replace(destination)
-    backups = sorted(destination_dir.glob("memes-*.db"), reverse=True)
-    for old_backup in backups[BACKUPS_TO_KEEP:]:
-        old_backup.unlink()
+        temporary.replace(destination)
+        backups = sorted(destination_dir.glob("memes-*.db"), reverse=True)
+        for old_backup in backups[BACKUPS_TO_KEEP:]:
+            old_backup.unlink()
     return destination
 
 

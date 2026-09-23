@@ -32,18 +32,25 @@ MIGRATIONS: tuple[tuple[int, Callable[[sqlite3.Connection], None]], ...] = (
 
 
 def _migrate(conn: sqlite3.Connection) -> None:
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS schema_migrations (version integer PRIMARY KEY, applied_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP)"
-    )
-    applied = {row[0] for row in conn.execute("SELECT version FROM schema_migrations")}
-    for version, migration in MIGRATIONS:
-        if version in applied:
-            continue
-        with conn:
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS schema_migrations (version integer PRIMARY KEY, applied_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+        )
+        applied = {
+            row[0] for row in conn.execute("SELECT version FROM schema_migrations")
+        }
+        for version, migration in MIGRATIONS:
+            if version in applied:
+                continue
             migration(conn)
             conn.execute(
                 "INSERT INTO schema_migrations (version) VALUES (?)", (version,)
             )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def init_db(db_name: str) -> sqlite3.Connection:
@@ -59,5 +66,9 @@ def init_db(db_name: str) -> sqlite3.Connection:
     conn.execute("PRAGMA busy_timeout = 10000")
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
-    _migrate(conn)
+    try:
+        _migrate(conn)
+    except Exception:
+        conn.close()
+        raise
     return conn

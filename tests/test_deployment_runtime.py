@@ -4,10 +4,13 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from threading import Barrier
 from unittest.mock import MagicMock, patch
 
+import main as bot_main
 from app.config import AppConfig
 from app.cron_jobs import weekly_report
 from app.cron_jobs.backup_database import BACKUPS_TO_KEEP, create_backup
@@ -16,6 +19,7 @@ from app.cron_jobs.cron_job_message_count import send_inactive_users
 from app.cron_jobs.cron_job_old_hats import send_old_hat_winner
 from app.cron_jobs.job_runner import run_once
 from app.cron_jobs.periods import current_week_key, previous_week
+from app.database import create_db_connection as database
 from app.database.create_db_connection import init_db
 
 VALID_ENV = {
@@ -80,6 +84,57 @@ class TestDatabase(unittest.TestCase):
                         0
                     ],
                     1,
+                )
+            finally:
+                conn.close()
+
+    def test_failed_migration_rolls_back_all_ddl(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "memes.db"
+
+            def failing_migration(conn):
+                conn.execute("CREATE TABLE partial_table (id integer)")
+                raise RuntimeError("migration failed")
+
+            with (
+                patch.object(database, "MIGRATIONS", ((1, failing_migration),)),
+                self.assertRaisesRegex(RuntimeError, "migration failed"),
+            ):
+                database.init_db(str(path))
+
+            conn = sqlite3.connect(path)
+            try:
+                tables = {
+                    row[0]
+                    for row in conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    )
+                }
+                self.assertNotIn("partial_table", tables)
+                self.assertNotIn("schema_migrations", tables)
+            finally:
+                conn.close()
+
+    def test_concurrent_initialization_applies_each_migration_once(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / "memes.db")
+            barrier = Barrier(2)
+
+            def initialize():
+                barrier.wait()
+                conn = init_db(path)
+                conn.close()
+
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                list(executor.map(lambda _: initialize(), range(2)))
+
+            conn = sqlite3.connect(path)
+            try:
+                self.assertEqual(
+                    conn.execute(
+                        "SELECT COUNT(*) FROM schema_migrations WHERE version=1"
+                    ).fetchone(),
+                    (1,),
                 )
             finally:
                 conn.close()
@@ -237,13 +292,14 @@ class TestReports(unittest.TestCase):
         admin.status = "administrator"
         self.bot.get_chat_member.side_effect = [member, admin, RuntimeError("gone")]
 
-        send_inactive_users(
-            self.bot,
-            self.conn,
-            -1,
-            10,
-            datetime.now(timezone.utc) - timedelta(days=14),
-        )
+        with self.assertRaisesRegex(RuntimeError, "Failed to inspect 1"):
+            send_inactive_users(
+                self.bot,
+                self.conn,
+                -1,
+                10,
+                datetime.now(timezone.utc) - timedelta(days=14),
+            )
 
         text = self.bot.send_message.call_args.args[1]
         self.assertIn("alice", text)
@@ -314,7 +370,70 @@ class TestBackup(unittest.TestCase):
                     datetime(2026, 9, 1, tzinfo=timezone.utc),
                 )
 
-            self.assertEqual(list(backup_dir.iterdir()), [])
+            self.assertEqual(list(backup_dir.glob("*.db")), [])
+            self.assertEqual(list(backup_dir.glob("*.tmp")), [])
+
+    def test_concurrent_backups_are_serialized_and_valid(self):
+        with tempfile.TemporaryDirectory() as directory:
+            db_path = str(Path(directory) / "memes.db")
+            first = init_db(db_path)
+            first.execute("INSERT INTO users VALUES (1, 'alice', 1, NULL)")
+            first.commit()
+            second = init_db(db_path)
+            backup_dir = Path(directory) / "backups"
+            now = datetime(2026, 9, 1, tzinfo=timezone.utc)
+
+            try:
+                with ThreadPoolExecutor(max_workers=2) as executor:
+                    paths = list(
+                        executor.map(
+                            lambda source: create_backup(source, backup_dir, now),
+                            (first, second),
+                        )
+                    )
+            finally:
+                first.close()
+                second.close()
+
+            self.assertEqual(paths[0], paths[1])
+            self.assertEqual(list(backup_dir.glob("*.tmp")), [])
+            restored = sqlite3.connect(paths[0])
+            try:
+                self.assertEqual(
+                    restored.execute("PRAGMA integrity_check").fetchone(), ("ok",)
+                )
+                self.assertEqual(
+                    restored.execute("SELECT username FROM users").fetchone(),
+                    ("alice",),
+                )
+            finally:
+                restored.close()
+
+
+class TestBotRuntime(unittest.TestCase):
+    def test_bot_serializes_handlers_that_share_the_sqlite_connection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = AppConfig(
+                bot_token="test-token",
+                memes_chat_id=-1001,
+                memes_thread_id=10,
+                flood_thread_id=11,
+                music_thread_id=12,
+                external_channel_chat_id=-1002,
+                chat_creator_id=1,
+                db_path=str(Path(directory) / "memes.db"),
+                backup_dir=str(Path(directory) / "backups"),
+            )
+            mocked_bot = MagicMock()
+            with patch.object(
+                bot_main.telebot, "TeleBot", return_value=mocked_bot
+            ) as constructor:
+                _, conn = bot_main.create_bot(config)
+            conn.close()
+
+        constructor.assert_called_once_with(
+            "test-token", skip_pending=True, num_threads=1
+        )
 
 
 class TestWeeklyReportOrchestrator(unittest.TestCase):

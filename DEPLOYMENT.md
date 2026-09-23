@@ -23,6 +23,31 @@ TZ=Europe/Moscow
 `COMPOSE_PROJECT_NAME`; Dokploy uses it to locate the service for scheduled
 Compose jobs.
 
+## Existing database cutover
+
+Do not deploy over an existing bot by starting with an empty named volume. The
+old `memes.db` contains meme history, votes, users, and saved administrator
+titles. Before the first production start:
+
+1. Disable the old schedules and stop the old polling bot so only one instance
+   can consume Telegram updates.
+2. Create a consistent SQLite snapshot with the SQLite backup API, or copy the
+   database only after a clean shutdown. Do not copy a live `.db` while ignoring
+   its `-wal` file.
+3. Determine the timezone used by historical naïve timestamps. New writes use
+   `Europe/Moscow`; convert historical timestamps once if the old runtime used a
+   different timezone.
+4. Import the snapshot as `/data/memes.db` in the `tachanbot_data` volume and
+   make `/data` recursively writable by UID `10001`.
+5. Before starting the bot, run `PRAGMA integrity_check` and compare row counts
+   for `memes_posts_v2`, `user_votes`, `users`, and `dank_boss_titles` with the
+   source snapshot.
+6. Start the bot first. Enable the new schedules only after confirming whether
+   the old scheduler already published the current reporting period.
+
+For a deliberately fresh installation, record that no database import is
+required before allowing the empty volume to initialize.
+
 ## Scheduled Compose jobs
 
 Create jobs for the `bot` service and select the `Europe/Moscow` timezone:
