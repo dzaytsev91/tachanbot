@@ -135,5 +135,6 @@ main-dev.py
 test.png
 docker-compose.yml
 .ruff_cache/
+.amp/portals/*
 promote.py
 insert_users.py

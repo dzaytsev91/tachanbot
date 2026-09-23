@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+timed() {
+    local label="$1"
+    shift
+    local started=$SECONDS
+
+    printf '\n==> %s\n' "$label"
+    "$@"
+    printf '<== %s (%ss)\n' "$label" "$((SECONDS - started))"
+}
+
+missing_packages=()
+command -v aria2c >/dev/null 2>&1 || missing_packages+=(aria2)
+command -v ffmpeg >/dev/null 2>&1 || missing_packages+=(ffmpeg)
+
+if ((${#missing_packages[@]})); then
+    apt=(apt-get)
+    if ((EUID != 0)); then
+        apt=(sudo apt-get)
+    fi
+    timed "Refresh apt metadata" "${apt[@]}" update
+    timed "Install system dependencies: ${missing_packages[*]}" \
+        "${apt[@]}" install -y --no-install-recommends "${missing_packages[@]}"
+else
+    printf '==> System dependencies already installed\n'
+fi
+
+timed "Create Python virtual environment" python3 -m venv .venv
+timed "Install Python runtime dependencies" \
+    .venv/bin/python -m pip install --disable-pip-version-check -r requirements.txt
+timed "Install Python development dependencies" \
+    .venv/bin/python -m pip install --disable-pip-version-check -r requirements.dev.txt
+
+profile="$HOME/.bash_profile"
+profile_marker="# tachanbot orb Python environment"
+if ! grep -Fqx "$profile_marker" "$profile" 2>/dev/null; then
+    printf '\n%s\n' "$profile_marker" >> "$profile"
+    printf 'if [[ "${PWD:-}" == %q || "${PWD:-}" == %q/* ]]; then\n' \
+        "$repo_root" "$repo_root" >> "$profile"
+    printf '    source %q/bin/activate\n' "$repo_root/.venv" >> "$profile"
+    printf 'fi\n' >> "$profile"
+    printf '==> Added repository-scoped virtual environment activation to %s\n' "$profile"
+else
+    printf '==> Repository-scoped virtual environment activation already configured\n'
+fi
+
+printf '\nOrb setup complete.\n'
