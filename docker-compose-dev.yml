@@ -1,27 +1,15 @@
-version: "3.3"
 services:
   bot:
     build: .
-    restart: always
+    restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      BOT_TOKEN: "SECRET"
-      MEMES_THREAD_ID: "1"
+      DB_PATH: /data/memes.db
+      BACKUP_DIR: /data/backups
+      TZ: Europe/Moscow
     volumes:
-      - "./memes.db:/app/memes.db"
-  cron:
-    build: .
-    entrypoint: "python cron_job.py"
-    environment:
-      BOT_TOKEN: "SECRET"
-      MEMES_THREAD_ID: "1"
-    volumes:
-      - "./memes.db:/app/memes.db"
+      - tachanbot_dev_data:/data
 
-  cron_likes:
-    build: .
-    entrypoint: "python cron_job.py"
-    environment:
-      BOT_TOKEN: "SECRET"
-      MEMES_THREAD_ID: "1"
-    volumes:
-      - "./memes.db:/app/memes.db"
+volumes:
+  tachanbot_dev_data:

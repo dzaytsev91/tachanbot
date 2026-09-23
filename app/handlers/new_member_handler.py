@@ -1,4 +1,4 @@
-from datetime import datetime
+from app.cron_jobs.periods import local_now
 
 
 def process_new_member(message, bot, conn):
@@ -6,7 +6,7 @@ def process_new_member(message, bot, conn):
         user_id = new_user.id
         user_name = new_user.first_name
         mention = "[" + user_name + "](tg://user?id=" + str(user_id) + ")"
-        bot_msg = "WelCUM CUMрад, {}".format(mention)
+        bot_msg = f"WelCUM CUMрад, {mention}"
         bot.send_animation(
             message.chat.id,
             animation="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWEwY2MwY2Q0MTU2Mjg0OWZiNzk0NmY0ZDQ5MWNjMzczODI1YWFmZiZjdD1n/FeAs1kvsWP4OvWa9zt/giphy-downsized-large.gif",
@@ -29,7 +29,7 @@ def process_new_member(message, bot, conn):
         11. Не верь тем кто попросит тебя скидывать дикпик, это самые вруны.
         """
 
-        instruction_message = "Привет {}!\n{}".format(mention, hello_text)
+        instruction_message = f"Привет {mention}!\n{hello_text}"
         bot.send_message(
             message.chat.id,
             message_thread_id=message.message_thread_id,
@@ -43,7 +43,7 @@ def process_new_member(message, bot, conn):
                 user_id,
                 user_name,
                 True,
-                datetime.now(),
+                local_now().replace(tzinfo=None).isoformat(sep=" "),
             ),
         )
         conn.commit()

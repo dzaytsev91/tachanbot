@@ -1,0 +1,23 @@
+services:
+  bot:
+    build:
+      context: .
+    restart: unless-stopped
+    init: true
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN:?BOT_TOKEN is required}
+      MEMES_CHAT_ID: ${MEMES_CHAT_ID:?MEMES_CHAT_ID is required}
+      MEMES_THREAD_ID: ${MEMES_THREAD_ID:?MEMES_THREAD_ID is required}
+      FLOOD_THREAD_ID: ${FLOOD_THREAD_ID:?FLOOD_THREAD_ID is required}
+      MUSIC_THREAD_ID: ${MUSIC_THREAD_ID:?MUSIC_THREAD_ID is required}
+      EXTERNAL_CHANNEL_CHAT_ID: ${EXTERNAL_CHANNEL_CHAT_ID:?EXTERNAL_CHANNEL_CHAT_ID is required}
+      CHAT_CREATOR_ID: ${CHAT_CREATOR_ID:-43529628}
+      DB_PATH: /data/memes.db
+      BACKUP_DIR: /data/backups
+      TZ: ${TZ:-Europe/Moscow}
+    volumes:
+      - tachanbot_data:/data
+    stop_grace_period: 30s
+
+volumes:
+  tachanbot_data:

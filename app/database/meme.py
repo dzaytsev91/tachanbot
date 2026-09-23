@@ -1,8 +1,9 @@
-from datetime import datetime
 from sqlite3 import IntegrityError
 
-from app.utils.markup import generate_markup
 from telebot import types
+
+from app.cron_jobs.periods import local_now
+from app.utils.markup import generate_markup
 
 
 def save_meme_to_db(
@@ -19,7 +20,7 @@ def save_meme_to_db(
         query,
         (
             message.id,
-            datetime.now(),
+            local_now().replace(tzinfo=None).isoformat(sep=" "),
             message.id,
             0,
             0,
@@ -132,9 +133,8 @@ def meme_vote_pressed(
 def is_duplicate_by_hash(conn, image_hash) -> int:
     cursor = conn.cursor()
     rows = cursor.execute(
-        "SELECT memes_thread_message_id FROM memes_posts_v2 WHERE hash = '{}'".format(
-            image_hash
-        )
+        "SELECT memes_thread_message_id FROM memes_posts_v2 WHERE hash = ?",
+        (image_hash,),
     ).fetchall()
     if len(rows) > 0:
         return rows[0][0]

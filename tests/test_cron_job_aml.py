@@ -4,10 +4,10 @@ import sqlite3
 import sys
 import types
 import unittest
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
-import app.cron_jobs.cron_job_aml as mod
 
+import app.cron_jobs.cron_job_aml as mod
 
 _real_telebot = sys.modules.get("telebot")
 if _real_telebot is None:
@@ -34,12 +34,14 @@ def _make_member(status: str = "member", custom_title: str = "") -> MagicMock:
 
 def _recent_date() -> str:
     """A date guaranteed to fall within the 'last week' query window."""
-    return date.today().isoformat()
+    today = datetime.now(timezone.utc).date()
+    current_monday = today - timedelta(days=today.weekday())
+    return (current_monday - timedelta(days=1)).isoformat()
 
 
 def _old_date() -> str:
     """A date guaranteed to fall outside the query window."""
-    return (date.today() - timedelta(days=30)).isoformat()
+    return (datetime.now(timezone.utc).date() - timedelta(days=30)).isoformat()
 
 
 def _seed_memes(conn: sqlite3.Connection, rows: list[tuple]):
@@ -120,11 +122,13 @@ def _run_main(
         bot_obj.run()
     else:
         # Old code: patch module-level globals, call main().
-        with patch.object(mod, "bot", mock_bot), patch.object(
-            mod, "conn", conn
-        ), patch.object(mod, "memes_chat_id", CHAT_ID), patch.object(
-            mod, "flood_thread_id", FLOOD_THREAD_ID
-        ), patch.object(mod, "chat_creator", chat_creator_id):
+        with (
+            patch.object(mod, "bot", mock_bot),
+            patch.object(mod, "conn", conn),
+            patch.object(mod, "memes_chat_id", CHAT_ID),
+            patch.object(mod, "flood_thread_id", FLOOD_THREAD_ID),
+            patch.object(mod, "chat_creator", chat_creator_id),
+        ):
             mod.main()
 
 
@@ -232,7 +236,7 @@ class TestRatingMessage(unittest.TestCase):
         _run_main(self.conn, self.mock_bot)
         text = self._rating_text()
         # "d" should have the clown emoji
-        d_line = [l for l in text.split("\n") if "[d]" in l]  # noqa
+        d_line = [line for line in text.split("\n") if "[d]" in line]
         self.assertTrue(d_line, "User 'd' line not found")
         self.assertIn("🤡", d_line[0])
 
@@ -378,7 +382,7 @@ class TestBossTitle(unittest.TestCase):
                 title = args[2] if len(args) > 2 else ""
             title = kwargs.get("custom_title", title)
             if title == "Dank boss":
-                raise Exception("API fail")
+                raise RuntimeError("API fail")
 
         self.mock_bot.set_chat_administrator_custom_title.side_effect = _side_effect
         _run_main(self.conn, self.mock_bot)
@@ -398,7 +402,7 @@ class TestBossTitle(unittest.TestCase):
                 title = args[2] if len(args) > 2 else ""
             title = kwargs.get("custom_title", title)
             if title == "Dank boss":
-                raise Exception("API fail")
+                raise RuntimeError("API fail")
 
         self.mock_bot.set_chat_administrator_custom_title.side_effect = _side_effect
         _run_main(self.conn, self.mock_bot)

@@ -1,4 +1,4 @@
-from datetime import datetime
+from app.cron_jobs.periods import local_now
 
 
 def save_message(message, conn):
@@ -9,7 +9,7 @@ def save_message(message, conn):
             message.from_user.id,
             message.id,
             message.message_thread_id,
-            datetime.now(),
+            local_now().replace(tzinfo=None).isoformat(sep=" "),
         ),
     )
     conn.commit()

@@ -1,8 +1,9 @@
-from datetime import datetime
 from sqlite3 import IntegrityError
 
-from app.utils.markup import generate_markup
 from telebot import types
+
+from app.cron_jobs.periods import local_now
+from app.utils.markup import generate_markup
 
 
 def save_music_to_db(
@@ -19,7 +20,7 @@ def save_music_to_db(
         query,
         (
             message.id,
-            datetime.now(),
+            local_now().replace(tzinfo=None).isoformat(sep=" "),
             message.id,
             0,
             0,

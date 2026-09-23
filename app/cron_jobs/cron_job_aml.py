@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+import logging
 import os
 import sqlite3
-import logging
 from dataclasses import dataclass
 from datetime import date
-from pathlib import Path
 
 import telebot
-from dateutil.relativedelta import relativedelta, MO
+
+from app.cron_jobs.periods import local_now, previous_week
+from app.database.create_db_connection import init_db
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -31,15 +32,14 @@ class Config:
     db_path: str
 
     @classmethod
-    def from_env(cls) -> "Config":
-        project_root = Path(__file__).resolve().parents[2]
+    def from_env(cls) -> Config:
         return cls(
             bot_token=os.environ["BOT_TOKEN"],
             memes_chat_id=int(os.environ["MEMES_CHAT_ID"]),
-            flood_thread_id=int(os.getenv("FLOOD_THREAD_ID", "1")),
-            memes_thread_id=int(os.getenv("MEMES_THREAD_ID", "1")),
-            chat_creator_id=43529628,
-            db_path=str(project_root / "memes.db"),
+            flood_thread_id=int(os.environ["FLOOD_THREAD_ID"]),
+            memes_thread_id=int(os.environ["MEMES_THREAD_ID"]),
+            chat_creator_id=int(os.getenv("CHAT_CREATOR_ID", "43529628")),
+            db_path=os.getenv("DB_PATH", "memes.db"),
         )
 
 
@@ -117,7 +117,7 @@ class TitleManager:
         old_title = self._get_custom_title(user_id)
         self._conn.execute(
             "INSERT INTO dank_boss_titles (user_id, old_title, assigned_at) VALUES (?, ?, ?)",
-            (user_id, old_title, date.today().isoformat()),
+            (user_id, old_title, local_now().date().isoformat()),
         )
         self._conn.commit()
         return True
@@ -139,15 +139,21 @@ class MemeRatingBot:
                SUM(up_votes),
                COUNT(*)
         FROM memes_posts_v2
-        WHERE created_at > ?
+        WHERE created_at >= ? AND created_at < ?
         GROUP BY user_id, username
-        ORDER BY aml DESC
+        ORDER BY aml DESC, user_id ASC
     """
 
-    def __init__(self, config: Config):
+    def __init__(
+        self,
+        config: Config,
+        bot: telebot.TeleBot | None = None,
+        conn: sqlite3.Connection | None = None,
+    ):
         self._config = config
-        self._bot = telebot.TeleBot(config.bot_token)
-        self._conn = sqlite3.connect(config.db_path, check_same_thread=False)
+        self._bot = bot or telebot.TeleBot(config.bot_token)
+        self._conn = conn or init_db(config.db_path)
+        self._owns_connection = conn is None
         self._titles = TitleManager(self._conn, self._bot, config.memes_chat_id)
 
     def _send_flood(self, text: str):
@@ -158,9 +164,10 @@ class MemeRatingBot:
             parse_mode="Markdown",
         )
 
-    def _fetch_weekly_stats(self) -> list[MemeStats]:
-        last_monday = date.today() + relativedelta(weekday=MO(-2))
-        rows = self._conn.execute(self.WEEKLY_STATS_QUERY, (last_monday,)).fetchall()
+    def _fetch_weekly_stats(self, start: date, end: date) -> list[MemeStats]:
+        rows = self._conn.execute(
+            self.WEEKLY_STATS_QUERY, (start.isoformat(), end.isoformat())
+        ).fetchall()
         return [MemeStats(*row) for row in rows]
 
     def _promote_to_admin(self, user_id: int, username: str):
@@ -202,7 +209,7 @@ class MemeRatingBot:
                 user_id=winner.user_id,
                 custom_title=BOSS_TITLE,
             )
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - Telegram exposes several exception types
             if saved:
                 self._titles.rollback_save(winner.user_id)
             self._send_flood(f"Ошибка, error: {err}")
@@ -221,8 +228,11 @@ class MemeRatingBot:
             f" total memes count {stats.total_count})"
         )
 
-    def run(self):
-        all_stats = self._fetch_weekly_stats()
+    def run(self, start: date | None = None, end: date | None = None):
+        if start is None or end is None:
+            period = previous_week()
+            start, end = period.start, period.end
+        all_stats = self._fetch_weekly_stats(start, end)
         if not all_stats:
             logger.info("No meme stats for this week")
             return
@@ -263,10 +273,18 @@ class MemeRatingBot:
         if winner:
             self._assign_boss_title(winner)
 
+    def close(self) -> None:
+        if self._owns_connection:
+            self._conn.close()
+
 
 def main():
     config = Config.from_env()
-    MemeRatingBot(config).run()
+    rating_bot = MemeRatingBot(config)
+    try:
+        rating_bot.run()
+    finally:
+        rating_bot.close()
 
 
 if __name__ == "__main__":

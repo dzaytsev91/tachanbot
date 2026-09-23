@@ -1,0 +1,13 @@
+.git
+.amp
+.agents
+.venv
+__pycache__
+*.py[cod]
+*.db
+*.db-*
+.env
+creds_*.env
+cookies.txt
+test.png
+.ruff_cache
