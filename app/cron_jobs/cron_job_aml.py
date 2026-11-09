@@ -204,7 +204,6 @@ class MemeRatingBot:
             )
             return
 
-        self._titles.restore_previous_titles(exclude_user_id=winner.user_id)
         self._titles.save_title(winner.user_id)
         try:
             self._bot.set_chat_administrator_custom_title(
@@ -236,6 +235,7 @@ class MemeRatingBot:
         all_stats = self._fetch_weekly_stats(start, end)
         if not all_stats:
             logger.info("No meme stats for this week")
+            self._titles.restore_previous_titles()
             return
 
         ranked_lines: list[str] = []
@@ -272,6 +272,14 @@ class MemeRatingBot:
         message_parts.extend(unranked_lines)
 
         self._send_flood("\n".join(message_parts))
+
+        # Last week's boss loses the title even when nobody qualifies this week
+        try:
+            self._titles.restore_previous_titles(
+                exclude_user_id=winner.user_id if winner else None
+            )
+        except Exception as error:  # noqa: BLE001 - aggregate Telegram failures
+            failures.append(error)
 
         if winner:
             try:

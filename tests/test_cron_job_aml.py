@@ -350,6 +350,19 @@ class TestBossTitle(unittest.TestCase):
         ).fetchone()
         self.assertIsNone(row, "Previous boss should be removed from DB")
 
+    def test_restores_previous_boss_title_without_new_winner(self):
+        _seed_boss_titles(self.conn, [(99, "previous king", "2025-01-01")])
+        _seed_memes(self.conn, [(1, "alice", 10, 0, self.today)])
+        _run_main(self.conn, self.mock_bot)
+        self.mock_bot.set_chat_administrator_custom_title.assert_called_once_with(
+            CHAT_ID, 99, "previous king"
+        )
+        self.assertIsNone(
+            self.conn.execute(
+                "SELECT 1 FROM dank_boss_titles WHERE user_id = 99"
+            ).fetchone()
+        )
+
     def test_skips_chat_creator(self):
         rows = [(CHAT_CREATOR_ID, "creator", 10, 0, self.today)] * MINIMUM_MEMES
         _seed_memes(self.conn, rows)
