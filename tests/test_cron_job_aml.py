@@ -25,10 +25,13 @@ MINIMUM_MEMES = getattr(mod, "MINIMUM_MEMES_COUNT", None) or getattr(
 )
 
 
-def _make_member(status: str = "member", custom_title: str = "") -> MagicMock:
+def _make_member(
+    status: str = "member", custom_title: str = "", tag: str = ""
+) -> MagicMock:
     m = MagicMock()
     m.status = status
     m.custom_title = custom_title
+    m.tag = tag
     return m
 
 
@@ -363,6 +366,66 @@ class TestBossTitle(unittest.TestCase):
             ).fetchone()
         )
 
+    def _seed_promoted_boss(self, user_id: int, old_tag: str):
+        mod.TitleManager(self.conn, self.mock_bot, CHAT_ID)
+        self.conn.execute(
+            "INSERT INTO dank_boss_titles"
+            " (user_id, old_title, assigned_at, old_tag, promoted)"
+            " VALUES (?, '', '2025-01-01', ?, 1)",
+            (user_id, old_tag),
+        )
+        self.conn.commit()
+
+    def test_saves_member_tag_before_promoting_boss(self):
+        rows = [(1, "alice", 10, 0, self.today)] * MINIMUM_MEMES
+        _seed_memes(self.conn, rows)
+
+        # Telegram drops the member tag once the user is promoted
+        def _member(chat_id, user_id):
+            if self.mock_bot.promote_chat_member.called:
+                return _make_member(status="administrator")
+            return _make_member(status="member", tag="memer")
+
+        self.mock_bot.get_chat_member.side_effect = _member
+        _run_main(self.conn, self.mock_bot)
+
+        self.mock_bot.promote_chat_member.assert_called_once()
+        self.assertEqual(
+            self.conn.execute(
+                "SELECT old_title, old_tag, promoted FROM dank_boss_titles"
+                " WHERE user_id = 1"
+            ).fetchone(),
+            ("", "memer", 1),
+        )
+
+    def test_demotes_promoted_previous_boss_and_restores_tag(self):
+        self._seed_promoted_boss(99, "memer")
+        _seed_memes(self.conn, [(1, "alice", 10, 0, self.today)] * MINIMUM_MEMES)
+        _run_main(self.conn, self.mock_bot)
+
+        self.mock_bot.promote_chat_member.assert_called_once_with(
+            CHAT_ID, 99, **{right: False for right in mod.ADMIN_RIGHTS}
+        )
+        self.mock_bot.set_chat_member_tag.assert_called_once_with(CHAT_ID, 99, "memer")
+        self.assertIsNone(
+            self.conn.execute(
+                "SELECT 1 FROM dank_boss_titles WHERE user_id = 99"
+            ).fetchone()
+        )
+
+    def test_promoted_previous_boss_in_top3_stays_admin(self):
+        self._seed_promoted_boss(99, "memer")
+        rows = [(1, "alice", 10, 0, self.today)] * MINIMUM_MEMES
+        rows += [(99, "bob", 5, 0, self.today)] * MINIMUM_MEMES
+        _seed_memes(self.conn, rows)
+        _run_main(self.conn, self.mock_bot)
+
+        self.mock_bot.promote_chat_member.assert_not_called()
+        self.mock_bot.set_chat_member_tag.assert_not_called()
+        self.mock_bot.set_chat_administrator_custom_title.assert_any_call(
+            CHAT_ID, 99, mod.DEFAULT_ADMIN_TITLE
+        )
+
     def test_skips_chat_creator(self):
         rows = [(CHAT_CREATOR_ID, "creator", 10, 0, self.today)] * MINIMUM_MEMES
         _seed_memes(self.conn, rows)
@@ -441,8 +504,7 @@ class TestBossTitle(unittest.TestCase):
     def test_failed_old_title_read_does_not_assign_new_title(self):
         rows = [(1, "alice", 10, 0, self.today)] * MINIMUM_MEMES
         _seed_memes(self.conn, rows)
-        admin = _make_member(status="administrator")
-        self.mock_bot.get_chat_member.side_effect = [admin, RuntimeError("API fail")]
+        self.mock_bot.get_chat_member.side_effect = RuntimeError("API fail")
 
         with self.assertRaisesRegex(RuntimeError, "Telegram failure"):
             _run_main(self.conn, self.mock_bot)

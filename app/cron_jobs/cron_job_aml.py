@@ -20,6 +20,17 @@ REWARDS = ["🥇", "🥈", "🥉"]
 CLOWN = "🤡"
 BOSS_TITLE = "Dank boss"
 DEFAULT_ADMIN_TITLE = "дух"
+# Telegram only lets the bot demote an admin when every right is False
+ADMIN_RIGHTS = (
+    "can_post_messages",
+    "can_invite_users",
+    "can_pin_messages",
+    "can_manage_chat",
+    "can_manage_video_chats",
+    "can_manage_voice_chats",
+    "can_manage_topics",
+)
+ADMIN_STATUSES = ("administrator", "creator")
 
 
 @dataclass
@@ -71,35 +82,60 @@ class TitleManager:
             CREATE TABLE IF NOT EXISTS dank_boss_titles (
                 user_id    INTEGER PRIMARY KEY,
                 old_title  TEXT,
-                assigned_at TEXT
+                assigned_at TEXT,
+                old_tag    TEXT DEFAULT '',
+                promoted   INTEGER DEFAULT 0
             )
             """
         )
+        columns = {
+            row[1] for row in self._conn.execute("PRAGMA table_info(dank_boss_titles)")
+        }
+        if "old_tag" not in columns:
+            self._conn.execute(
+                "ALTER TABLE dank_boss_titles ADD COLUMN old_tag TEXT DEFAULT ''"
+            )
+        if "promoted" not in columns:
+            self._conn.execute(
+                "ALTER TABLE dank_boss_titles ADD COLUMN promoted INTEGER DEFAULT 0"
+            )
         self._conn.commit()
 
-    def _get_custom_title(self, user_id: int) -> str:
-        try:
-            member = self._bot.get_chat_member(self._chat_id, user_id)
-            return member.custom_title or ""
-        except Exception:
-            logger.exception("Failed to get custom title for user %d", user_id)
-            raise
-
-    def restore_previous_titles(self, exclude_user_id: int | None = None):
+    def restore_previous_titles(
+        self,
+        exclude_user_id: int | None = None,
+        honored_user_ids: frozenset[int] = frozenset(),
+    ):
         rows = self._conn.execute(
-            "SELECT user_id, old_title FROM dank_boss_titles"
+            "SELECT user_id, old_title, old_tag, promoted FROM dank_boss_titles"
         ).fetchall()
 
         failures: list[Exception] = []
-        for user_id, old_title in rows:
+        for user_id, old_title, old_tag, promoted in rows:
             if user_id == exclude_user_id:
                 continue
             try:
-                member = self._bot.get_chat_member(self._chat_id, user_id)
-                if member.status in ("administrator", "creator"):
-                    self._bot.set_chat_administrator_custom_title(
-                        self._chat_id, user_id, old_title or ""
-                    )
+                status = self._bot.get_chat_member(self._chat_id, user_id).status
+                if status in ADMIN_STATUSES:
+                    if not promoted:
+                        self._bot.set_chat_administrator_custom_title(
+                            self._chat_id, user_id, old_title or ""
+                        )
+                    elif user_id in honored_user_ids:
+                        # Finished in the top 3 again, so stays an admin like
+                        # the other medalists
+                        self._bot.set_chat_administrator_custom_title(
+                            self._chat_id, user_id, DEFAULT_ADMIN_TITLE
+                        )
+                    else:
+                        self._bot.promote_chat_member(
+                            self._chat_id,
+                            user_id,
+                            **{right: False for right in ADMIN_RIGHTS},
+                        )
+                        status = "member"
+                if promoted and old_tag and status in ("member", "restricted"):
+                    self._bot.set_chat_member_tag(self._chat_id, user_id, old_tag)
             except Exception as error:
                 logger.exception("Failed to restore title for user %d", user_id)
                 failures.append(error)
@@ -121,10 +157,27 @@ class TitleManager:
         if existing:
             return False
 
-        old_title = self._get_custom_title(user_id)
+        try:
+            member = self._bot.get_chat_member(self._chat_id, user_id)
+        except Exception:
+            logger.exception("Failed to get old title for user %d", user_id)
+            raise
+        is_admin = member.status in ADMIN_STATUSES
+        # A regular member has a tag instead of an admin title (Bot API 9.5),
+        # and the bot promotes them for the week
+        old_title = (member.custom_title or "") if is_admin else ""
+        old_tag = "" if is_admin else (getattr(member, "tag", None) or "")
         self._conn.execute(
-            "INSERT INTO dank_boss_titles (user_id, old_title, assigned_at) VALUES (?, ?, ?)",
-            (user_id, old_title, local_now().date().isoformat()),
+            "INSERT INTO dank_boss_titles"
+            " (user_id, old_title, assigned_at, old_tag, promoted)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (
+                user_id,
+                old_title,
+                local_now().date().isoformat(),
+                old_tag,
+                int(not is_admin),
+            ),
         )
         self._conn.commit()
         return True
@@ -175,18 +228,12 @@ class MemeRatingBot:
 
     def _promote_to_admin(self, user_id: int, username: str):
         member = self._bot.get_chat_member(self._config.memes_chat_id, user_id)
-        if member.status in ("administrator", "creator"):
+        if member.status in ADMIN_STATUSES:
             return
         self._bot.promote_chat_member(
             self._config.memes_chat_id,
             user_id,
-            can_post_messages=True,
-            can_invite_users=True,
-            can_pin_messages=True,
-            can_manage_chat=True,
-            can_manage_video_chats=True,
-            can_manage_voice_chats=True,
-            can_manage_topics=True,
+            **{right: True for right in ADMIN_RIGHTS},
         )
         self._bot.set_chat_administrator_custom_title(
             self._config.memes_chat_id, user_id, DEFAULT_ADMIN_TITLE
@@ -204,7 +251,10 @@ class MemeRatingBot:
             )
             return
 
+        # Save the old title or tag first: a member's tag is unreadable once
+        # the bot promotes them
         self._titles.save_title(winner.user_id)
+        self._promote_to_admin(winner.user_id, winner.username)
         try:
             self._bot.set_chat_administrator_custom_title(
                 chat_id=self._config.memes_chat_id,
@@ -243,6 +293,7 @@ class MemeRatingBot:
         failures: list[Exception] = []
         reward_idx = 0
         winner: MemeStats | None = None
+        honored_user_ids: set[int] = set()
 
         for stats in all_stats:
             if not stats.has_enough_memes:
@@ -252,13 +303,16 @@ class MemeRatingBot:
             if reward_idx < TOP_PLACES:
                 reward = REWARDS[reward_idx]
                 reward_idx += 1
+                honored_user_ids.add(stats.user_id)
                 if winner is None:
+                    # Promoted in _assign_boss_title once the old title is saved
                     winner = stats
-                try:
-                    self._promote_to_admin(stats.user_id, stats.username)
-                except Exception as error:
-                    logger.exception("Failed to promote user %d", stats.user_id)
-                    failures.append(error)
+                else:
+                    try:
+                        self._promote_to_admin(stats.user_id, stats.username)
+                    except Exception as error:
+                        logger.exception("Failed to promote user %d", stats.user_id)
+                        failures.append(error)
             else:
                 reward = CLOWN
             ranked_lines.append(self._format_user_line(stats, reward))
@@ -276,7 +330,8 @@ class MemeRatingBot:
         # Last week's boss loses the title even when nobody qualifies this week
         try:
             self._titles.restore_previous_titles(
-                exclude_user_id=winner.user_id if winner else None
+                exclude_user_id=winner.user_id if winner else None,
+                honored_user_ids=frozenset(honored_user_ids),
             )
         except Exception as error:  # noqa: BLE001 - aggregate Telegram failures
             failures.append(error)
